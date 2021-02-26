@@ -9,10 +9,12 @@
 
 同时```uni-app```扩展了weex原生渲染引擎的很多排版能力，修复了很多bug。比如
 
-- Android端良好支持边框阴影，[详情](/nvue-css?id=android平台：阴影elevation)
+- Android端良好支持边框阴影，[详情](/nvue-css?id=android-box-shadow)
 - iOS端支持高斯模糊，<a href="https://ask.dcloud.net.cn/article/36617#view" target="_blank">详情</a>
 - 可实现区域滚动长列表+左右拖动列表+吸顶的复杂排版效果
 - 优化圆角边框绘制性能
+
+
 
 ## 适用场景
 
@@ -36,6 +38,9 @@ nvue的组件和API写法与vue页面一致，其内置组件还比vue页面内�
 但注意，在某些场景下，nvue不如vue页面，如下：
 1. ```canvas```。nvue的canvas性能不高，尤其是Android App平台，所以这个组件干脆没有内置，而是需要单独引入。操作canvas动画，最高性能的方式是使用vue页面的renderjs技术，在hello uni-app里的canvas示例就是如此。
 2. 动态横竖屏。nvue页面的css不支持媒体查询，所以横竖屏动态切换、动态适配屏幕是很困难的。
+
+
+
 
 
 ## 纯原生渲染模式
@@ -99,7 +104,9 @@ weex的组件和JS API，与uni-app不同。uni-app与微信小程序相同。
 	}
 ```
 
-如果没有在manifest里明确配置，默认是```weex模式```。这是为了向下兼容。
+
+在 `manifest.json` 配置文件中，HBuilderX2.4之前版本，默认值为 `weex` 模式，2.4起版本默认值改为 `uni-app` 模式。
+
 
 weex 编译模式不支持 ```onNavigationBarButtonTap``` 生命周期函数的写法。在 nvue 中监听原生标题栏按钮点击事件，详见：[uni.onNavigationBarButtonTap](https://uniapp.dcloud.net.cn/frame?id=%e9%a1%b5%e9%9d%a2%e7%94%9f%e5%91%bd%e5%91%a8%e6%9c%9f)。
 
@@ -147,6 +154,45 @@ weex 编译模式下支持使用 weex ui ，例子[详见](https://ext.dcloud.ne
 
 ### 3.调试 nvue 页面
 HBuilderX内置了weex调试工具的强化版，包括审查界面元素、看log、debug打断点，[详见](https://uniapp.dcloud.io/snippet?id=%e5%85%b3%e4%ba%8e-app-%e7%9a%84%e8%b0%83%e8%af%95)
+
+
+
+
+
+## render-whole
+
+在HBuilder X 3.1.0起版本，nvue 新增 `render-whole`属性，类型`Boolean`。
+
+- 设置render-whole="true"时，视图层将组件以及子组件的信息结构一次性和原生层通讯，通过整个节点的重绘提升了排版渲染性能。
+- 设置render-whole="false"时，视图层将以子节点一个接着一个和原生层通讯再重绘。总体的渲染时间可能更久。
+
+默认启用`render-whole`为`true`的组件列表
+
+- `text`
+- `cell`
+- `header`
+- `cell-slot`
+- `recycle-list`
+
+**使用**
+
+```html
+<swiper :render-whole="true"></swiper>
+```
+
+**演示**
+
+ > 此演示在Android 5.1版本手机上的效果，高版本手机效果没有这么明显
+ 
+<img style="width:300px;" src="https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/29c0c580-55ab-11eb-a16f-5b3e54966275.gif"></img>
+ 
+
+示例工程[点击下载](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/d5adb160-55af-11eb-bd01-97bc1429a9ff.zip)
+ 
+
+
+
+
 
 
 ## nvue开发与vue开发的常见区别

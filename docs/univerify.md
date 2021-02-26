@@ -14,6 +14,20 @@
 ![](https://dcloud-img.oss-cn-hangzhou.aliyuncs.com/client/doc/univerify/demo.png)
 
 
+### 产品优势
+
+- **用户体验好**
+用户体验好，无需等待短信验证码，能有效降低用户流失率，提升用户注册量在App激活量中的占比。
+
+- **便宜**
+使用`uni一键登录`的成本比短信验证码便宜数倍。（该业务移动运营商需要收费，DCloud在该业务上并不赚钱。所以`uni一键登录`的费用比市场上三方提供的一键登陆要更便宜）
+
+- **安全**
+采用运营商网关认证，避免短信劫持，有效提升安全性
+
+- **开发体验好**
+无需原生插件，无需自定义基座（HBuilder标准基座就可以直接运行调试），简单快速完成上线。
+
 ### 流程
 1. App界面弹出请求授权，询问用户是否同意授权该App获取手机号。这个授权请求界面是运营商sdk弹出的，可以有限定制。
 2. 用户同意授权后，SDK底层访问运营商网关鉴权，获得当前设备`access_token`等信息。
@@ -23,20 +37,8 @@
 
 前置条件：
 + 手机安装有sim卡
-+ 手机开启数据流量
++ 手机开启数据流量（与wifi无关，不要求关闭wifi，但数据流量不能禁用。）
 + 开通uniCloud服务（但不要求所有后台代码都使用uniCloud）
-
-
-### 产品优势
-
-- **用户体验好**
-用户体验好，无需等待短信验证码，能有效降低用户流失率，提升用户注册量在App激活量中的占比。
-
-- **便宜**
-使用`uni一键登录`的成本比短信验证码便宜数倍。
-
-- **安全**
-采用运营商网关认证，避免短信劫持，有效提升安全性
 
 
 ## 开通
@@ -125,7 +127,7 @@ uni.login({
     //参考`univerifyStyle 数据结构`
   },
 	success(res){ // 登录成功
-		console.log(res.authResult);  // {openid:'deviceIDlength+deviceID+gyuid',access_token:'接口返回的 token'}
+		console.log(res.authResult);  // {openid:'登录授权唯一标识',access_token:'接口返回的 token'}
 	},
 	fail(res){  // 登录失败
 		console.log(res.errCode)
@@ -143,53 +145,46 @@ univerifyStyle 数据结构：
 
 ```json
 {
-    "backgroundColor": "页面背景颜色，默认白色 #ffffff",  
-    "icon": {
-        "path": "可选 自定义本地图片 默认显示logo ",
-        "width": "可选 宽度 默认60",
-        "height": "可选 高度 默认60"
-    },
-    "phoneNum": {
-        "color": "字体颜色 默认黑色 #000000",
-        "fontSize": "字体大小 默认 18加粗"
-    },
-    "slogan": {
-        "color": "字体颜色 默认 #8a8b90",
-        "fontSize": "字体大小 默认 12"
-    },
-    "authButton": {
-        "normalColor": "正常状态颜色 #3479f5",
-        "highlightColor": "按下状态颜色 #2861c5",
-        "disabledColor": "不可点击时颜色 #73aaf5",//仅ios支持
-        "width": "宽度 默认 设备屏幕宽度左右各留 32px",
-        "height": "高度 默认 94px",
-        "textColor": "#ffffff",
-        "title": "本机号码一键登录"
-    },
-    "otherLoginButton": {
-        "visible": "true", //是否显示其他登录按钮，默认显示
-        "normalColor": "正常状态颜色 #f8f8f8",
-        "highlightColor": "按下状态颜色 #dedede",
-        "width": "宽度 默认 设备屏幕宽度左右各留 32px",
-        "height": "高度 默认 94px",
-        "textColor": "#000000",
-        "title": "其他登录方式",
-        "borderWidth": "边框宽度 1px",//仅ios支持
-        "borderColor": "边框颜色 #c5c5c5"//仅ios支持
-    },
-    "privacyTerms": {
-        "textColor": "#8a8b90", //文字颜色
-        "termsColor": "#1d4788", //协议文字颜色
-        "prefix": "我已阅读并同意",
-        "suffix": "并使用本机号码登录",
-        "fontSize": 12,
-        "privacyItems": [
-            {
-                "url": "https://",
-                "title": "用户服务协议"
-            }
-        ]
-    }
+  "backgroundColor": "#ffffff",  // 授权页面背景颜色，默认值：#ffffff  
+  "icon": {  
+      "path": "static/xxx.png" // 自定义显示在授权框中的logo，仅支持本地图片 默认显示App logo   
+  },  
+  "phoneNum": {  
+      "color": "#000000",  // 手机号文字颜色 默认值：#000000   
+  },  
+  "slogan": {  
+      "color": "#8a8b90",  //  slogan 字体颜色 默认值：#8a8b90  
+  },  
+  "authButton": {  
+      "normalColor": "#3479f5", // 授权按钮正常状态背景颜色 默认值：#3479f5  
+      "highlightColor": "#2861c5",  // 授权按钮按下状态背景颜色 默认值：#2861c5（仅ios支持）  
+      "disabledColor": "#73aaf5",  // 授权按钮不可点击时背景颜色 默认值：#73aaf5（仅ios支持）  
+      "textColor": "#ffffff",  // 授权按钮文字颜色 默认值：#ffffff  
+      "title": "本机号码一键登录" // 授权按钮文案 默认值：“本机号码一键登录”  
+  },  
+  "otherLoginButton": {  
+      "visible": "true", // 是否显示其他登录按钮，默认值：true  
+      "normalColor": "#f8f8f8", // 其他登录按钮正常状态背景颜色 默认值：#f8f8f8  
+      "highlightColor": "#dedede", // 其他登录按钮按下状态背景颜色 默认值：#dedede  
+      "textColor": "#000000", // 其他登录按钮文字颜色 默认值：#000000  
+      "title": "其他登录方式", // 其他登录方式按钮文字 默认值：“其他登录方式”  
+      "borderWidth": "1px",  // 边框宽度 默认值：1px（仅ios支持）  
+      "borderColor": "#c5c5c5"  //边框颜色 默认值： #c5c5c5（仅ios支持）  
+  },  
+  "privacyTerms": {  
+      "defaultCheckBoxState":"true", // 条款勾选框初始状态 默认值： true   
+      "textColor": "#8a8b90", // 文字颜色 默认值：#8a8b90  
+      "termsColor": "#1d4788", //  协议文字颜色 默认值： #1d4788  
+      "prefix": "我已阅读并同意", // 条款前的文案 默认值：“我已阅读并同意”  
+      "suffix": "并使用本机号码登录", // 条款后的文案 默认值：“并使用本机号码登录”  
+      "privacyItems": [  
+          // 自定义协议条款，最大支持2个，需要同时设置url和title. 否则不生效  
+          {  
+              "url": "https://", // 点击跳转的协议详情页面  
+              "title": "用户服务协议" // 协议名称  
+          }  
+      ]  
+  }  
 }
 ```
 
@@ -227,13 +222,13 @@ uni.closeAuthView()
 客户端获取到 `access_token` 后，传递给uniCloud云函数，云函数中通过`uniCloud.getPhoneNumber`方法获取真正的手机号。
 
 这一步有3种方式：
-1. uni-app项目开通[uniCloud](https://unicloud.dcloud.net.cn/)服务，在前端直接写 `uniCloud.callfuntion` ，将 `access_token` 传给指定的云函数。
+1. uni-app项目开通[uniCloud](https://unicloud.dcloud.net.cn/)服务，在前端直接写 `uniCloud.callFunction` ，将 `access_token` 传给指定的云函数。
 2. 使用普通ajax请求提交 `access_token` 给uniCloud的云函数。这种方式uni-app和5+App、wap2app均可使用，但uniCloud上的云函数需要做URL化。
 3. 使用普通ajax请求提交 `access_token` 给自己的传统服务器，通过自己的传统服务器再转发给 uniCloud 云函数。这种方式uni-app和5+App、wap2app均可使用，但uniCloud上的云函数需要做URL化。
 
 下面分别提供示例代码：
 
-#### uni-app项目使用uniCloud.callfuntion的方式调用云函数
+#### uni-app项目使用uniCloud.callFunction的方式调用云函数
 
 如果是未开通过uniCloud的uni-app项目：
 1. 首先开通uniCloud服务空间，[参考](https://unicloud.dcloud.net.cn/)
@@ -269,6 +264,7 @@ uniCloud.callFunction({
 exports.main = async (event, context) => {
   // event里包含着客户端提交的参数
   const res = await uniCloud.getPhoneNumber({
+  	appid: '_UNI_ABCDEFG', // 替换成自己开通一键登录的应用的DCloud appid，使用callFunction方式调用时可以不传（会自动取当前客户端的appid），如果使用云函数URL化的方式访问必须传此参数
   	provider: 'univerify',
   	apiKey: 'xxx', // 在开发者中心开通服务并获取apiKey
   	apiSecret: 'xxx', // 在开发者中心开通服务并获取apiSecret
@@ -287,8 +283,13 @@ exports.main = async (event, context) => {
 }
 ```
 
-完整的项目实例源码，可以参考：[https://ext.dcloud.net.cn/plugin?id=13](https://ext.dcloud.net.cn/plugin?id=13)
+完整的项目实例源码，可以参考：
+1. 云端一体项目模板：[https://ext.dcloud.net.cn/plugin?id=13](https://ext.dcloud.net.cn/plugin?id=13)
+2. hello uni-app。打包后直接体验：[https://m3w.cn/uniapp](https://m3w.cn/uniapp)；源码获取：在HBuilderX中新建uni-app项目，选择hello uni-app模板。一键登陆的具体位置在 API - login 栏目中。
 
+**注意**
+
+- 开发期间如果重新获取过appid需要重新编译uni-app项目
 
 #### 5+（wap2app）项目通过云函数URL化让云函数暴露出普通http接口
 

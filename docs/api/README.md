@@ -62,7 +62,7 @@ uni.request({
 	})
 
 // Await
-function async request () {
+async function request () {
 	var [error, res] = await uni.request({
 		url: 'https://www.example.com/request'
 	});
@@ -220,6 +220,7 @@ function async request () {
 |:-|:-|
 |[uni.getNetworkType](api/system/network?id=getnetworktype)|获取网络类型|
 |[uni.onNetworkStatusChange](api/system/network?id=onnetworkstatuschange)|监听网络状态变化|
+|[uni.offNetworkStatusChange](api/system/network?id=offnetworkstatuschange)|取消监听网络状态变化|
 ##### 加速度计
 
 |API|说明|
@@ -335,7 +336,7 @@ function async request () {
 |[uni.showToast](api/ui/prompt?id=showtoast)|显示提示框|
 |[uni.showLoading](api/ui/prompt?id=showloading)|显示加载提示框|
 |[uni.hideToast](api/ui/prompt?id=hidetoast)|隐藏提示框|
-|[uni.hideLoading](api/ui/prompt?id=hideloading)|隐藏提示框|
+|[uni.hideLoading](api/ui/prompt?id=hideloading)|隐藏加载提示框|
 |[uni.showModal](api/ui/prompt?id=showmodal)|显示模态弹窗|
 |[uni.showActionSheet](api/ui/prompt?id=showactionsheet)|显示菜单列表|
 ##### 设置导航条

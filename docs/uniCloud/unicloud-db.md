@@ -37,27 +37,33 @@ HBuilderX中敲下`udb`代码块，得到如下代码，然后通过collection�
 如果需要 HBuilderX3.0 以下版本使用clientDB组件，则需要从插件市场单独下载`<uni-clientdb>插件`，下载地址为：[https://ext.dcloud.net.cn/plugin?id=3256](https://ext.dcloud.net.cn/plugin?id=3256)。但仍然推荐升级HBuilderX 3.0+。
 
 
-## 属性
+## 属性@props
 
 |属性|类型|描述|
 |:-|:-|:-|
 |v-slot:default||查询状态（失败、联网中）及结果（data）|
 |ref|string|vue组件引用标记|
 |collection|string|表名。支持输入多个表名，用 `,` 分割|
-|field|string|查询字段，多个字段用 `,` 分割。不写本属性，即表示查询所有字段|
-|where|string|查询条件，内容较多，另见`jql`文档：[详情](https://uniapp.dcloud.net.cn/uniCloud/uni-clientDB?id=jsquery)|
+|field|string|指定要查询的字段，多个字段用 `,` 分割。不写本属性，即表示查询所有字段。支持用 oldname as newname方式对返回字段重命名|
+|where|string|查询条件，对记录进行过滤。[见下](/uniCloud/unicloud-db?id=where)|
 |orderby|string|排序字段及正序倒叙设置|
 |page-data|String|分页策略选择。值为 `add` 代表下一页的数据追加到之前的数据中，常用于滚动到底加载下一页；值为 `replace` 时则替换当前data数据，常用于PC式交互，列表底部有页码分页按钮，默认值为`add`|
 |page-current|Number|当前页|
 |page-size|Number|每页数据数量|
 |getcount|Boolean|是否查询总数据条数，默认 `false`，需要分页模式时指定为 `true`|
 |getone|Boolean|指定查询结果是否仅返回数组第一条数据，默认 false。在false情况下返回的是数组，即便只有一条结果，也需要[0]的方式获取。在值为 true 时，直接返回结果数据，少一层数组，一般用于非列表页，比如详情页|
-|action|string|云端执行数据库查询的前或后，触发某个action函数操作，进行预处理或后处理，[详情](https://uniapp.dcloud.net.cn/uniCloud/uni-clientDB?id=%e4%ba%91%e7%ab%af%e9%83%a8%e5%88%86)。场景：前端无权操作的数据，比如阅读数+1|
-|manual|Boolean|是否手动加载数据，默认为 false，页面onready时自动联网加载数据。如果设为 true，则需要自行指定时机通过方法`this.$refs.udb.loadData()`来触发联网，其中的`udb`指组件的ref值|
+|action|string|云端执行数据库查询的前或后，触发某个action函数操作，进行预处理或后处理，[详情](/uniCloud/uni-clientDB?id=%e4%ba%91%e7%ab%af%e9%83%a8%e5%88%86)。场景：前端无权操作的数据，比如阅读数+1|
+|manual|Boolean|是否手动加载数据，默认为 false，页面onready时自动联网加载数据。如果设为 true，则需要自行指定时机通过方法`this.$refs.udb.loadData()`来触发联网，其中的`udb`指组件的ref值。一般onLoad因时机太早取不到this.$refs.udb，在onReady里可以取到|
+|gettree|Boolean|是否查询树状结构数据，HBuilderX3.0.5+ [详情](/uniCloud/clientdb?id=gettree)|
+|startwith|String|gettree的第一层级条件，此初始条件可以省略，不传startWith时默认从最顶级开始查询，HBuilderX3.0.5+|
+|limitlevel|Number|gettree查询返回的树的最大层级。超过设定层级的节点不会返回。默认10级，最大15，最小1，HBuilderX3.0.5+|
+|groupby|String|对数据进行分组，HBuilderX3.1.0+|
+|group-field|String|对数据进行分组统计|
+|distinct|Boolean|是否对数据查询结果中重复的记录进行去重，默认值false，HBuilderX3.1.0+|
 |@load|EventHandle|成功回调。联网返回结果后，若希望先修改下数据再渲染界面，则在本方法里对data进行修改|
 |@error|EventHandle|失败回调|
 
-TODO：暂不支持groupby、in子查询功能。后续会补充
+TODO：暂不支持in子查询功能。后续会补充
 
 注意：`page-current/page-size` 改变不重置数据(`page-data="replace"`)除外，`collection/action/field/getcount/orderby/where` 改变后清空已有数据
 
@@ -65,6 +71,9 @@ TODO：暂不支持groupby、in子查询功能。后续会补充
 **示例**
 
 比如云数据库有个user的表，里面有字段id、name，查询id=1的数据，那么写法如下：
+
+**注意下面示例使用了getone会返回一条对象形式的data，如不使用getone，data将会是数组形式，即多一层**
+
 ```html
 <template>
   <view>
@@ -78,11 +87,11 @@ TODO：暂不支持groupby、in子查询功能。后续会补充
 
 ```
 
-**注意：除非使用admin账户登录操作，否则需要在 uniCloud 控制台对要查询的表增加 Schema 权限配置。至少配置读取权限，否则无权查询**，详情 [https://uniapp.dcloud.net.cn/uniCloud/schema](https://uniapp.dcloud.net.cn/uniCloud/schema)
+**注意：除非使用admin账户登录操作，否则需要在 uniCloud 控制台对要查询的表增加 Schema 权限配置。至少配置读取权限，否则无权在前端查询**，详见 [DB Schema](/uniCloud/schema)
 
 ## v-slot:default
 
-```
+```html
 <unicloud-db v-slot:default="{data, pagination, loading, hasMore, error, options}"></unicloud-db>
 ```
 
@@ -110,17 +119,89 @@ TODO：暂不支持groupby、in子查询功能。后续会补充
 
 ```
 
+## where@where
+
+where中指定要查询的条件。比如只查询某个字段的值符合一定条件的记录。
+
+组件的where属性，与clientDB的JS API是一致的，且内容较多，所以详见js API中相关`jql`文档：[详情](/uniCloud/uni-clientDB?id=jsquery)
+
+但组件与js API有一个差别，就是组件的属性中若使用js中的变量，需额外注意。
+
+例如查询uni-id-users表，字段username的值由js变量指定，有如下几种方式：
+
+方式1. 使用模板字符串，用${}包裹变量
+```html
+<template>
+	<view>
+		<unicloud-db collection="uni-id-users" :where="`username=='${tempstr}'`"></unicloud-db>
+	</view>
+</template>
+<script>
+	export default {
+		data() {
+			return {
+				tempstr: '123'
+			}
+		}
+	}
+</script>
+```
+
+**注意**
+
+- 此方式目前在微信小程序会报错，近期会进行修复
+
+方式2. 不在属性中写，而在js中拼接字符串
+```html
+<template>
+	<view>
+		<unicloud-db collection="uni-id-users" :where="sWhere"></unicloud-db>
+	</view>
+</template>
+<script>
+	export default {
+		data() {
+			return {
+				tempstr: '123',
+				sWhere: ''
+			}
+		}
+		onLoad() {
+			this.sWhere = "id=='" + this.tempstr + "'"
+
+			// 多条件示例
+
+			// id = this.tempstr 且 create_time > 1613960340000
+			// this.sWhere = "id=='" + this.tempstr + "' && create_time > 1613960340000"
+
+			// id = this.tempstr 或 name != null
+			// this.sWhere = "id=='" + this.tempstr + "' || name != null"
+		}
+	}
+</script>
+```
+
+上述示例使用的是==比较符，如需进行模糊搜索，则使用正则表达式。插件市场提供了完整的云端一体搜索模板，搜索类页面无需自行开发，可直接使用。[详见](https://ext.dcloud.net.cn/plugin?id=3851)
+
+再次强调，where条件内容较多，组件和api用法相同，完整的where条件文档在api文档中，另见：[JQL文档](/uniCloud/uni-clientDB?id=jsquery)
 
 ## orderby
 
-格式为 `字段名` 空格 `asc`(升序)/`desc`(降序)`，多个字段用 `,` 分割，优先级为字段顺序
+格式为 `字段名` 空格 `asc`(升序)/`desc`(降序)，多个字段用 `,` 分割，优先级为字段顺序
 
 <!-- 升序可以不写，不写默认就是升序。 -->
 
-示例代码
-```
+单字段排序，示例代码
+```html
 <unicloud-db orderby="createTime desc"></unicloud-db>
 ```
+
+多字段排序，示例代码
+```html
+<unicloud-db orderby="createTime1 asc,createTime2 desc"></unicloud-db>
+```
+
+
 
 ## 事件
 
@@ -167,6 +248,52 @@ handleError(e) {
 this.$refs.udb.loadData() //udb为unicloud-db组件的ref属性值
 ```
 
+一般onLoad因时机太早取不到this.$refs.udb，在onReady里可以取到。
+
+举例常见场景，页面pagea在url中获取参数id，然后加载数据
+
+请求地址：/pages/pagea?id=123
+
+pagea.vue源码：
+
+```html
+<template>
+	<view>
+		<unicloud-db ref="udb" collection="table1" :where="where" v-slot:default="{data,pagination,loading,error,options}" :options="options" manual>
+			{{data}}
+		</unicloud-db>
+	</view>
+</template>
+<script>
+export default {
+	data() {
+		return {
+			_id:'',
+			where: ''
+		}
+	},
+	onLoad(e) {
+		const id = e.id
+		if (id) {
+			this._id = id
+			this.where = "_id == '" + this._id + "'"
+		}
+		else {
+			uni.showModal({
+				content:"页面参数错误",
+				showCancel:false
+			})
+		}
+	},
+	onReady() {
+		if (this._id) {
+			this.$refs.udb.loadData()
+		}
+	}
+}
+</script>
+```
+
 ### loadMore
 
 在列表的加载下一页场景下，使用ref方式访问组件方法，加载更多数据，每加载成功一次，当前页 +1
@@ -195,6 +322,7 @@ udb为unicloud-db组件的ref属性值
 
 |属性|类型|默认值|描述|
 |:-|:-|:-|:-|
+|action|string||云端执行数据库查询的前或后，触发某个action函数操作，进行预处理或后处理，详情。场景：前端无权操作的数据，比如阅读数+1|
 |confirmTitle|string|提示|删除确认框标题|
 |confirmContent|string|是否删除该数据|删除确认框提示|
 |success|function||删除成功后的回调|
@@ -290,6 +418,7 @@ udb为unicloud-db组件的ref属性值
 
 |属性|类型|默认值|描述|
 |:-|:-|:-|:-|
+|action|string||云端执行数据库查询的前或后，触发某个action函数操作，进行预处理或后处理，详情。HBuilder 3.1.0+|
 |toastTitle|string|新增成功|新增成功后的toast提示|
 |success|function||新增成功后的回调|
 |fail|function||新增失败后的回调|
@@ -349,6 +478,7 @@ udb为unicloud-db组件的ref属性值
 
 |属性|类型|默认值|描述|
 |:-|:-|:-|:-|
+|action|string||云端执行数据库查询的前或后，触发某个action函数操作，进行预处理或后处理，详情。HBuilder 3.1.0+|
 |toastTitle|string|修改成功|修改成功后的toast提示|
 |success|function||更新成功后的回调|
 |fail|function||更新失败后的回调|

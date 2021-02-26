@@ -46,8 +46,6 @@
 
 激励视频广告组件是原生组件，层级最高，会覆盖在普通前端组件上。
 
-播放开始后提供6秒关闭功能，请注意：使用这个功能会对CPM有负向影响。如需申请，请用开发者帐号的邮箱，将应用名称和APP ID邮件发送到uniad@dcloud.io。
-
 
 ### 语法
 
@@ -561,11 +559,12 @@ isValid|校验结果|Blean|判定结果，是否发放奖励|
 - plus.navigator.isSimulator 判断App是否运行在模拟器环境 [规范](https://www.html5plus.org/doc/zh_cn/navigator.html#plus.navigator.isSimulator)
 - plus.navigator.isRoot 判断设备是否被root或越狱 [规范](https://www.html5plus.org/doc/zh_cn/navigator.html#plus.navigator.isRoot)
 - plus.networkinfo.isSetProxy 判断设备的网络是否设置了代理 [规范](https://www.html5plus.org/doc/zh_cn/device.html#plus.networkinfo.isSetProxy)
-4. 避免使用短信验证码来识别身份，推荐使用[微信登录](/api/plugins/login?id=login)、[手机号一键登陆](/univerify)
+4. 避免使用短信验证码来识别身份，推荐使用可信度更高的 [手机号一键登陆](/univerify) 或 [微信登录](/api/plugins/login?id=login)
 5. 必要时可使用[生物认证（指纹和faceid）](/api/system/authentication)、[活体检测的sdk](https://ext.dcloud.net.cn/search?q=%E6%B4%BB%E4%BD%93%E6%A3%80%E6%B5%8B&orderBy=Relevance&cat1=5&cat2=51)
 
 #### 获取广告商名称
-- HBuilderX 2.6.8+
+
+> HBuilderX 2.6.8+
 
 #### 语法
 
@@ -578,7 +577,7 @@ isValid|校验结果|Blean|判定结果，是否发放奖励|
 |值|描述|
 |:-:|:-:|
 |csj|穿山甲|
-|gdt|腾讯优量汇|
+|gdt|腾讯优量汇（前称广点通）|
 |ks|快手|
 
 
@@ -621,4 +620,4 @@ code|message|
 
 ### 案例参考
 - [全民董事长](https://android.myapp.com/myapp/detail.htm?apkName=com.dlt.qmdsz&info=DF3F955B42F0B77FECA41F03E7F77C8D)
-- [萌宠小凤凰](https://android.myapp.com/myapp/detail.htm?apkName=com.yexu.bird&info=F99297EC36071298FFAC45DA7BEEB8E3)
+- 重要项目源码《合成游戏》，拿走就能用，[https://ext.dcloud.net.cn/plugin?id=4095](https://ext.dcloud.net.cn/plugin?id=4095)

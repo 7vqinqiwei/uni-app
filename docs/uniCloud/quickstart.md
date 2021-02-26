@@ -3,7 +3,10 @@
   - 在 [HBuilderX 2.5.8+](https://www.dcloud.io/hbuilderx.html) 新建项目，选择uni-app项目，并勾选`启用uniCloud`
   - 在右侧选择服务供应商
 
-![创建uniCloud项目](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/create-project.png)
+
+
+<img max-width="500px" src="https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/d24d7f30-4b16-11eb-bdc1-8bd33eb6adaa.jpg" />
+
 
   - 对于老的uni-app项目，也可以对项目点右键，菜单中选择“创建uniCloud云开发环境”
   - 新建uni-app项目的模板中，有一个`Hello uniCloud`项目模板，演示了各种云函数的使用。
@@ -67,27 +70,45 @@ HBuilderX 3.0之前版本目录结构如下：
 
 一个开发者可以拥有多个服务空间，每个服务空间都是一个独立的serverless云环境，不同服务空间之间的云函数、数据库、存储都是隔离的。
 
-注：目前腾讯云仅提供一个服务空间。阿里云无限制
+注：目前腾讯云仅提供1个免费服务空间，最多可创建49个收费服务空间。阿里云最多可创建50个免费服务空间。
 
 服务空间和手机端项目是多对多绑定关系。同账号下，一个项目可以关联到多个服务空间。一个服务空间也可以被多个项目访问。
 
-  - 在云函数目录`cloudfunctions`右键菜单创建服务空间（HBuilderX 3.0以上版本请在uniCloud目录右键），会打开web控制台[https://unicloud.dcloud.net.cn](https://unicloud.dcloud.net.cn) 进行创建
 
-![创建服务空间](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/create-space.png)
+  - HBuilderX 3.0起版本，在云函数目录`uniCloud`右键菜单创建服务空间，会打开web控制台[https://unicloud.dcloud.net.cn](https://unicloud.dcloud.net.cn) 进行创建
 
-  - 创建好服务空间后，对目录`cloudfunctions`点右键（HBuilderX 3.0以上版本请在uniCloud目录右键），菜单中点击`选择云服务空间`，绑定你之前创建的服务空间。
+![创建服务空间1](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/b16f9740-4c05-11eb-8a36-ebb87efcf8c0.jpg)
+
+
+  - HBuilderX 3.0之前版本，在云函数目录`cloudfunctions`右键菜单创建服务空间，会打开web控制台[https://unicloud.dcloud.net.cn](https://unicloud.dcloud.net.cn) 进行创建
+
+![创建服务空间2](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/create-space.png)
+
+
+  - 创建好服务空间后，HBuilderX 3.0起版本对目录`uniCloud`点右键（HBuilderX 3.0之前版本对目录`cloudfunctions`点右键），菜单中点击`选择云服务空间`，绑定你之前创建的服务空间。
+
   
 **说明**
 
 - 如果未进行实名认证，会跳转至实名认证页面进行实名认证，等待实名认证审核之后可以开通服务空间。若腾讯云实名认证提示身份证下已创建过多账户，则需要在腾讯云官网注销不用的账户。
 - 创建服务空间可能需要几十秒的时间，可以在web控制台查看是否创建完成。
-- 一个应用，可以在[dev.dcloud.net.cn](https://dev.dcloud.net.cn)设置协作者（选择应用->设置项目成员），实现多人共同使用一个云服务空间。（需 HBuilderX 2.5.9+）需要注意的是目前协作者不可通过web控制台访问服务空间。
+- 一个应用，可以在[dev.dcloud.net.cn](https://dev.dcloud.net.cn)设置协作者（选择应用->设置项目成员），实现多人共同使用一个云服务空间。（需 HBuilderX 2.5.9+）。协作者可以在HBuilderX和web控制台中操作被授权的服务空间，除了删除服务空间，其他功能均可正常操作。
+- 多个项目可以复用一个服务空间，比如一个应用的用户端和管理端，在HBuilderX里可以创建成2个项目，但2个项目的服务空间可以指向一个，或者干脆把其中一个项目的服务空间绑定到另一个项目上，[详见](https://ask.dcloud.net.cn/article/37949)
 
 ## 创建云函数
 
-`uniCloud`项目创建并绑定服务空间后，开发者可以在`cloudfunctions`目录右键创建云函数（HBuilderX 3.0以上版本请在`uniCloud/cloudfunctions`目录右键）。
+`uniCloud`项目创建并绑定服务空间后，开发者可以创建云函数。
 
-![新建云函数](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/unicloud-02.png)
+HBuilderX 3.0起版本请在`uniCloud/cloudfunctions`目录右键创建云函数
+
+![新建云函数1](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/a18b3bb0-53d8-11eb-8ff1-d5dcf8779628.jpg)
+
+
+HBuilderX 3.0之前版本在 `cloudfunctions` 目录右键创建云函数
+
+![新建云函数2](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/unicloud-02.png)
+
+
 
 创建后会以云函数名称为名生成一个特殊目录，该目录下自动生成index.js，是该云函数的入口文件，不可改名。如果该云函数还需要引入其他js，可在index.js入口文件中引用。
 
@@ -96,6 +117,7 @@ HBuilderX 3.0之前版本目录结构如下：
 - 不同项目使用同一个服务空间时，不可使用同名云函数，可以在uniCloud的web控制台手动删除重名云函数释放函数名。
 - 在HBuilderX创建云函数时，如果新云函数与服务器上已存在同名云函数，会用新函数覆盖。
 - 单个云函数大小限制为10M（包含node_modules）
+- 云函数内使用commonjs规范，不可使用import、export，参考：[commonjs模块](http://nodejs.cn/api/modules.html#modules_modules_commonjs_modules)
 
 ## 编写云函数
 
@@ -220,6 +242,7 @@ exports.main = async (event, context) => {
 **注意事项**
 
 - 虽然云函数、数据库schema、validatefunction在本地，但云存储、数据库的数据和索引，仍然在云端。也就是开发机不能完全脱线开发。只是代码可以在本地写，免上传就能联调。
+- 连接线上环境时请记得上传本地的schema、validatefunction、action
 - 切换云端、本地，无需重新运行客户端
 - 不同平台可以有不同的配置。但同一平台，如安卓和iOS都是app-plus，则对应着同一个配置，或者两台安卓手机也只能有一个配置
 - 客户端在每次发送云函数请求之前，会发送一条请求到本地调试服务，本地服务会根据当前用户选择来通知客户端该访问本地云函数还是云端云函数
@@ -229,8 +252,11 @@ exports.main = async (event, context) => {
 - 如果项目内关联了两个服务空间，需要在`.hbuilderx/launch.json`内配置provider参数指定哪个服务空间使用本地调试
 - 当前项目运行的所有客户端都停止运行时，对本项目的调试服务会关闭，已经运行到手机的客户端将无法连接本地云函数
 - 在h5端network面板的会看到一些`Request Method: OPTION`的请求，这些是跨域预检请求，忽略即可。请参考：[HTTP 的 OPTIONS 方法](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Methods/OPTIONS)
-- 云函数超时时间、运行内存配置，再本地调试时不会生效
+- 云函数超时时间、运行内存配置，在本地调试时不会生效
 - 目前不支持使用了腾讯云自定义登录的场景
+- 开发小程序时如果想使用本地云函数进行调试，请开启小程序的忽略安全域名校验
+- 如果在使用HBuilderX过程中切换了电脑网络后本地调试服务无法访问，则需要重启一次HBuilderX
+- 小程序体验版无法连接本地服务，如果发布成小程序体验版请务必使用发行模式
 
 ### 本地运行云函数@runlocal
 
@@ -245,15 +271,15 @@ exports.main = async (event, context) => {
 - 如果没有安装本地运行插件，按照提示安装即可
 - 如需配置运行参数请参考：[配置运行测试参数](https://uniapp.dcloud.net.cn/uniCloud/quickstart?id=runparam)
 
-![](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/uniCloud-local-1.jpg)
+![本地运行](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/cb5457a0-4b19-11eb-8ff1-d5dcf8779628.jpg)
 
 在云函数编辑器里，按`Ctrl+r`运行快捷键（或点工具栏的运行），可看到运行云函数的若干菜单。`Ctrl+r`然后回车或选`0`，即可高效的在控制台看到运行结果和日志输出。如下图所示：
 
-![](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/uniCloud-run-function.png)
+![运行快捷键](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/723ec000-4b1a-11eb-b680-7980c8a877b8.jpg)
 
 云函数目前无法断点debug，只能打印`console.log`看日志。
 
-![](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/uniCloud-run-function-2.png)
+![日志](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/caddd2a0-4b1a-11eb-b680-7980c8a877b8.jpg)
 
 运行云函数时，如需要给云函数传参，除了在前端传参外，在调试阶段，可以通过配置json文件来传测试参数。
 
@@ -316,7 +342,7 @@ const hour = getOffsetDate(8).getHours()
 
 可以打开一个json，配置运行参数。配置该json后，运行云函数时会将该json作为云函数调用的上行参数处理，可以在云函数中接收到参数。
 
-![](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/uniCloud-run-function-1.png)
+![配置运行参数](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/37245420-4b1b-11eb-b997-9918a5dda011.jpg)
 
 在云函数目录右键运行云函数，也可以在云函数编辑器里，按`Ctrl+r`运行快捷键，或点工具栏的运行
 
@@ -324,7 +350,7 @@ const hour = getOffsetDate(8).getHours()
 
 此时云函数运行会携带所配置的运行参数
 
-![](https://img.cdn.aliyun.dcloud.net.cn/uni-app/uniCloud/run-function-with-param-2.jpg)
+![运行参数](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-dc-site/84352e10-4b1b-11eb-8ff1-d5dcf8779628.jpg)
 
 **模拟客户端类型**
 
@@ -427,7 +453,7 @@ uniCloud支持云函数，但其实大多数场景下并不需要写云函数，
 H5前端js访问云函数，涉及跨域问题，导致前端js无法连接云函数服务器。处理方式如下：。
 
 - 运行到H5端时，使用HBuilderX内置浏览器，可以忽略跨域问题（mac版需2.5.10+）。
-- 发行到H5端时，需要在uniCloud后台操作，绑定安全域名，否则会因为跨域问题而无法访问。（在`cloudfunctions`目录右键可打开uniCloud后台）
+- 发行到H5端时，需要在uniCloud后台操作，绑定安全域名（在部署云函数的服务空间配置部署h5的域名作为安全域名），否则会因为跨域问题而无法访问。（在`cloudfunctions`目录右键可打开uniCloud后台）
 
 > 注意跨域配置需要带上端口信息。例如：前端页面运行于：www.xxx.com:5001，跨域配置内配置：www.xxx.com不会对此页面生效，需要配置为：
 
@@ -438,6 +464,10 @@ H5前端js访问云函数，涉及跨域问题，导致前端js无法连接云�
 - 如果运行时，想使用外部浏览器运行，方案如下：
   * 方式1：在uniCloud web控制台绑定测试期的地址为安全域名，如配置：localhost:8080、192.168.0.1:8080（建议直接使用内置浏览器测试）
   * 方式2：在外部浏览器安装跨域插件，详见：[https://ask.dcloud.net.cn/article/35267](https://ask.dcloud.net.cn/article/35267)。要跨域的地址，详见上述文档中小程序配置安全域名章节。
+
+**注意**
+
+- 目前阿里云跨域配置不对云存储及前端网页托管生效，表现为云存储中图片绘制到canvas会[污染画布](https://developer.mozilla.org/zh-CN/docs/Web/API/Canvas_API/Tutorial/Using_images#Using_other_canvas_elements)，前端网页托管的网页不可在iframe中使用
 
 ## cli项目中使用uniCloud
 
@@ -473,9 +503,9 @@ web控制台网址：[https://unicloud.dcloud.net.cn](https://unicloud.dcloud.ne
 
 在web控制台可以对数据库进行编辑。在json文档中，输入字符串、数字、bool值都是常规的操作。但有2种特殊数据类型，时间和地理位置，在编辑时有特殊的写法，请注意：
 
-#### 添加日期@editdb_date
+#### 添加日期@editdb-date
 
-在web控制台添加/修改数据时，如果输入"2020-12-02 12:12:12"会变成字符串，而不是日期格式。此时需通过以下方式添加日期类型数据。
+在web控制台添加/修改数据时，如果输入`"2020-12-02 12:12:12"`会变成字符串，而不是日期格式。此时需通过以下方式添加日期类型数据。
 
 <!-- {
   "create_date": {
@@ -490,8 +520,9 @@ web控制台网址：[https://unicloud.dcloud.net.cn](https://unicloud.dcloud.ne
   }
 }
 ```
+注：时间戳无需如此复杂。时间戳只需直接输入不加引号的数字即可。
 
-#### 添加地理位置点@editdb_geopoint
+#### 添加地理位置点@editdb-geopoint
 
 ```js
 // 将location字段设置为经度116、纬度38的地理位置点

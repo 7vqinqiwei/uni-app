@@ -35,6 +35,9 @@
 |vslide-gesture-in-fullscreen|Boolean|true|在全屏模式下，是否开启亮度与音量调节手势|微信小程序|
 |ad-unit-id|String||视频前贴广告单元ID，更多详情可参考开放能力[视频前贴广告](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/ad/video-patch-ad.html)|微信小程序|
 |poster-for-crawler|String||用于给搜索等场景作为视频封面展示，建议使用无播放 icon 的视频封面图，只支持网络地址|微信小程序|
+|codec|String|hardware|解码器选择，hardware：硬解码（硬解码可以增加解码算力，提高视频清晰度。少部分老旧硬件可能存在兼容性问题）；software：ffmpeg 软解码；|App 3.1.0+|
+|http-cache|Boolean|true|是否对 http、https 视频源开启本地缓存。缓存策略:开启了此开关的视频源，在视频播放时会在本地保存缓存文件，如果本地缓存池已超过100M，在进行缓存前会清空之前的缓存（不适用于m3u8等流媒体协议）|App 3.1.0+|
+|play-strategy|Number|0| 播放策略，0：普通模式，适合绝大部分视频播放场景；1：平滑播放模式（降级），增加缓冲区大小，采用open sl解码音频，避免音视频脱轨的问题，可能会降低首屏展现速度、视频帧率，出现开屏音频延迟等。 适用于高码率视频的极端场景；|App 3.1.0+|
 |@play|EventHandle||当开始/继续播放时触发play事件|字节跳动小程序不支持|
 |@pause|EventHandle||当暂停播放时触发 pause 事件|字节跳动小程序不支持|
 |@ended|EventHandle||当播放到末尾时触发 ended 事件|字节跳动小程序不支持|
@@ -45,7 +48,7 @@
 |@progress|EventHandle||加载进度变化时触发，只支持一段加载。event.detail = {buffered}，百分比|微信小程序、H5|
 |@loadedmetadata|EventHandle||视频元数据加载完成时触发。event.detail = {width, height, duration}|微信小程序、H5|
 |@fullscreenclick|EventHandle||视频播放全屏播放时点击事件。event.detail = { screenX:"Number类型，点击点相对于屏幕左侧边缘的 X 轴坐标", screenY:"Number类型，点击点相对于屏幕顶部边缘的 Y 轴坐标", screenWidth:"Number类型，屏幕总宽度", screenHeight:"Number类型，屏幕总高度"}|App 2.6.3+|
-|@controlstoggle|eventhandle||切换 controls 显示隐藏时触发。event.detail = {show}|微信小程序2.9.5|
+|@controlstoggle|EventHandle||切换 controls 显示隐藏时触发。event.detail = {show}|微信小程序2.9.5|
 
 `<video>` 默认宽度 300px、高度 225px，可通过 css 设置宽高。
 
@@ -157,7 +160,7 @@ export default {
 }
 ```
 
-![uniapp](https://img-cdn-qiniu.dcloud.net.cn/uniapp/doc/img/video.png)
+![uniapp](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-uni-app-doc/989ac870-4f2f-11eb-8a36-ebb87efcf8c0.png)
 
 相关api：[uni.createVideoContext](/api/media/video-context?id=createvideocontext)
 
@@ -185,4 +188,4 @@ export default {
 - App平台：如果使用的视频路径为本地路径，需要配置资源为释放模式：在 manifest.json 文件内 app-plus 节点下新增 runmode 配置，设置值为liberate。
 - App平台：如果想使用非原生的video，即原来普通的html5自带video，可使用web-view组件load html页面，在其中使用普通h5 video。
 - App平台：app-vue即使选择了使用x5内核，也不会使用x5的video播放，仍然使用uni-app的App引擎自带的原生视频播放。
-- H5平台： 在部分浏览器中会强制调用原生播放器播放（如：微信内置浏览器、UC浏览器等），在 x5 内核的浏览器中支持配置[同层播放器](https://x5.tencent.com/tbs/guide/video.html)。
+- H5平台： 在部分浏览器中会强制调用原生播放器播放（如：微信内置浏览器、UC浏览器等），在 x5 内核的浏览器中支持配置[同层播放器](https://x5.tencent.com/docs/video.html)。

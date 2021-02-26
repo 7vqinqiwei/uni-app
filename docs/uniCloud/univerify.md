@@ -58,7 +58,7 @@ const res = await uniCloud.getPhoneNumber({
 uniCloud.callFunction({
   name: 'xxx', // 你的云函数名称
   data: {
-    accessToken: 'xxx', // 客户端一键登录接口返回的accessToken
+    access_token: 'xxx', // 客户端一键登录接口返回的access_token
     openid: 'xxx' // 客户端一键登录接口返回的openid
   }
 }).then(res => {
@@ -73,6 +73,7 @@ uniCloud.callFunction({
 // 云函数
 module.exports = async(event){
   const res = await uniCloud.getPhoneNumber({
+    appid: '_UNI_ABCDEFG', // 替换成自己开通一键登录的应用的DCloud appid，使用callFunction方式调用时可以不传（会自动取当前客户端的appid），如果使用云函数URL化的方式访问必须传此参数
   	provider: 'univerify',
   	apiKey: 'xxx', // 在开发者中心开通服务并获取apiKey
   	apiSecret: 'xxx', // 在开发者中心开通服务并获取apiSecret
@@ -86,6 +87,10 @@ module.exports = async(event){
   }
 }
 ```
+
+**注意**
+
+- 开发期间如果重新获取过appid需要重新编译uni-app项目
 
 ### 5+项目
 
@@ -114,16 +119,16 @@ module.exports = async(event){
     body = Buffer.from(body,'base64')
   }
   const {
-    accessToken,
+    access_token,
     openid
   } = JSON.parse(body)
   const res = await uniCloud.getPhoneNumber({
-  	provider: 'univerify',
+    provider: 'univerify',
     appid: 'xxx', // DCloud appid，不同于callFunction方式调用，使用云函数Url化需要传递DCloud appid参数
-  	apiKey: 'xxx', // 在开发者中心开通服务并获取apiKey
-  	apiSecret: 'xxx', // 在开发者中心开通服务并获取apiSecret
-  	access_token: access_token,
-  	openid: openid
+    apiKey: 'xxx', // 在开发者中心开通服务并获取apiKey
+    apiSecret: 'xxx', // 在开发者中心开通服务并获取apiSecret
+    access_token: access_token,
+    openid: openid
   })
   // 执行入库等操作，正常情况下不要把完整手机号返回给前端
   return {
@@ -158,14 +163,14 @@ const signStr = Object.keys(params).sort().map(key => {
 hmac.update(signStr);
 const sign = hmac.digest('hex')
 // 最终请求如下链接，其中https://xxxx/xxx为云函数Url化地址
-// https://xxxx/xxx?accessToken=xxx&openid=xxx&sign=${sign} 其中${sign}为上一步得到的sign值
+// https://xxxx/xxx?access_token=xxx&openid=xxx&sign=${sign} 其中${sign}为上一步得到的sign值
 ```
 
 
 ```js
 // 云函数验证签名，此示例中以接受GET请求为例作演示
 const crypto = require('crypto')
-module.exports = async(event){
+module.exports = async(event)=>{
   
   const secret = 'your-secret-string' // 自己的密钥不要直接使用示例值，且注意不要泄露
   const hmac = crypto.createHmac('sha256', secret);
@@ -184,7 +189,7 @@ module.exports = async(event){
   }
   
   const {
-    accessToken,
+    access_token,
     openid
   } = params
   const res = await uniCloud.getPhoneNumber({

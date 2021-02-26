@@ -231,7 +231,7 @@ const promiseInterceptor = {
 };
 
 const SYNC_API_RE =
-  /^\$|sendNativeEvent|restoreGlobal|getCurrentSubNVue|getMenuButtonBoundingClientRect|^report|interceptors|Interceptor$|getSubNVueById|requireNativePlugin|upx2px|hideKeyboard|canIUse|^create|Sync$|Manager$|base64ToArrayBuffer|arrayBufferToBase64/;
+  /^\$|Window$|WindowStyle$|sendNativeEvent|restoreGlobal|getCurrentSubNVue|getMenuButtonBoundingClientRect|^report|interceptors|Interceptor$|getSubNVueById|requireNativePlugin|upx2px|hideKeyboard|canIUse|^create|Sync$|Manager$|base64ToArrayBuffer|arrayBufferToBase64/;
 
 const CONTEXT_API_RE = /^create|Manager$/;
 
@@ -625,83 +625,18 @@ function initHook (name, options) {
     };
   }
 }
+if (!MPPage.__$wrappered) {
+  MPPage.__$wrappered = true;
+  Page = function (options = {}) {
+    initHook('onLoad', options);
+    return MPPage(options)
+  };
+  Page.after = MPPage.after;
 
-Page = function (options = {}) {
-  initHook('onLoad', options);
-  return MPPage(options)
-};
-
-Component = function (options = {}) {
-  initHook('created', options);
-  return MPComponent(options)
-};
-
-class EventChannel {
-  constructor (id, events) {
-    this.id = id;
-    this.listener = {};
-    this.emitCache = {};
-    if (events) {
-      Object.keys(events).forEach(name => {
-        this.on(name, events[name]);
-      });
-    }
-  }
-
-  emit (eventName, ...args) {
-    const fns = this.listener[eventName];
-    if (!fns) {
-      return (this.emitCache[eventName] || (this.emitCache[eventName] = [])).push(args)
-    }
-    fns.forEach(opt => {
-      opt.fn.apply(opt.fn, args);
-    });
-    this.listener[eventName] = fns.filter(opt => opt.type !== 'once');
-  }
-
-  on (eventName, fn) {
-    this._addListener(eventName, 'on', fn);
-    this._clearCache(eventName);
-  }
-
-  once (eventName, fn) {
-    this._addListener(eventName, 'once', fn);
-    this._clearCache(eventName);
-  }
-
-  off (eventName, fn) {
-    const fns = this.listener[eventName];
-    if (!fns) {
-      return
-    }
-    if (fn) {
-      for (let i = 0; i < fns.length;) {
-        if (fns[i].fn === fn) {
-          fns.splice(i, 1);
-          i--;
-        }
-        i++;
-      }
-    } else {
-      delete this.listener[eventName];
-    }
-  }
-
-  _clearCache (eventName) {
-    const cacheArgs = this.emitCache[eventName];
-    if (cacheArgs) {
-      for (; cacheArgs.length > 0;) {
-        this.emit.apply(this, [eventName].concat(cacheArgs.shift()));
-      }
-    }
-  }
-
-  _addListener (eventName, type, fn) {
-    (this.listener[eventName] || (this.listener[eventName] = [])).push({
-      fn,
-      type
-    });
-  }
+  Component = function (options = {}) {
+    initHook('created', options);
+    return MPComponent(options)
+  };
 }
 
 const PAGE_EVENT_HOOKS = [
@@ -1213,7 +1148,7 @@ function handleEvent (event) {
             }
             handler.once = true;
           }
-          const params = processEventArgs(
+          let params = processEventArgs(
             this.$vm,
             event,
             eventArray[1],
@@ -1221,9 +1156,13 @@ function handleEvent (event) {
             isCustom,
             methodName
           );
+          params = Array.isArray(params) ? params : [];
           // 参数尾部增加原始事件对象用于复杂表达式内获取额外数据
-          // eslint-disable-next-line no-sparse-arrays
-          ret.push(handler.apply(handlerCtx, (Array.isArray(params) ? params : []).concat([, , , , , , , , , , event])));
+          if (/=\s*\S+\.eventParams\s*\|\|\s*\S+\[['"]event-params['"]\]/.test(handler.toString())) {
+            // eslint-disable-next-line no-sparse-arrays
+            params = params.concat([, , , , , , , , , , event]);
+          }
+          ret.push(handler.apply(handlerCtx, params));
         }
       });
     }
@@ -1238,6 +1177,87 @@ function handleEvent (event) {
   }
 }
 
+class EventChannel {
+  constructor (id, events) {
+    this.id = id;
+    this.listener = {};
+    this.emitCache = {};
+    if (events) {
+      Object.keys(events).forEach(name => {
+        this.on(name, events[name]);
+      });
+    }
+  }
+
+  emit (eventName, ...args) {
+    const fns = this.listener[eventName];
+    if (!fns) {
+      return (this.emitCache[eventName] || (this.emitCache[eventName] = [])).push(args)
+    }
+    fns.forEach(opt => {
+      opt.fn.apply(opt.fn, args);
+    });
+    this.listener[eventName] = fns.filter(opt => opt.type !== 'once');
+  }
+
+  on (eventName, fn) {
+    this._addListener(eventName, 'on', fn);
+    this._clearCache(eventName);
+  }
+
+  once (eventName, fn) {
+    this._addListener(eventName, 'once', fn);
+    this._clearCache(eventName);
+  }
+
+  off (eventName, fn) {
+    const fns = this.listener[eventName];
+    if (!fns) {
+      return
+    }
+    if (fn) {
+      for (let i = 0; i < fns.length;) {
+        if (fns[i].fn === fn) {
+          fns.splice(i, 1);
+          i--;
+        }
+        i++;
+      }
+    } else {
+      delete this.listener[eventName];
+    }
+  }
+
+  _clearCache (eventName) {
+    const cacheArgs = this.emitCache[eventName];
+    if (cacheArgs) {
+      for (; cacheArgs.length > 0;) {
+        this.emit.apply(this, [eventName].concat(cacheArgs.shift()));
+      }
+    }
+  }
+
+  _addListener (eventName, type, fn) {
+    (this.listener[eventName] || (this.listener[eventName] = [])).push({
+      fn,
+      type
+    });
+  }
+}
+
+const eventChannels = {};
+
+const eventChannelStack = [];
+
+function getEventChannel (id) {
+  if (id) {
+    const eventChannel = eventChannels[id];
+    delete eventChannels[id];
+    return eventChannel
+  }
+  return eventChannelStack.shift()
+}
+
 const hooks = [
   'onShow',
   'onHide',
@@ -1247,10 +1267,28 @@ const hooks = [
   'onUnhandledRejection'
 ];
 
+function initEventChannel () {
+  Vue.prototype.getOpenerEventChannel = function () {
+    if (!this.__eventChannel__) {
+      this.__eventChannel__ = new EventChannel();
+    }
+    return this.__eventChannel__
+  };
+  const callHook = Vue.prototype.__call_hook;
+  Vue.prototype.__call_hook = function (hook, args) {
+    if (hook === 'onLoad' && args && args.__id__) {
+      this.__eventChannel__ = getEventChannel(args.__id__);
+      delete args.__id__;
+    }
+    return callHook.call(this, hook, args)
+  };
+}
+
 function parseBaseApp (vm, {
   mocks,
   initRefs
 }) {
+  initEventChannel();
   if (vm.$options.store) {
     Vue.prototype.$store = vm.$options.store;
   }
@@ -1419,34 +1457,7 @@ function parseApp$1 (vm) {
   return appOptions
 }
 
-const eventChannels = {};
-
-const eventChannelStack = [];
-
-function getEventChannel (id) {
-  if (id) {
-    const eventChannel = eventChannels[id];
-    delete eventChannels[id];
-    return eventChannel
-  }
-  return eventChannelStack.shift()
-}
-
 function createApp (vm) {
-  Vue.prototype.getOpenerEventChannel = function () {
-    if (!this.__eventChannel__) {
-      this.__eventChannel__ = new EventChannel();
-    }
-    return this.__eventChannel__
-  };
-  const callHook = Vue.prototype.__call_hook;
-  Vue.prototype.__call_hook = function (hook, args) {
-    if (hook === 'onLoad' && args && args.__id__) {
-      this.__eventChannel__ = getEventChannel(args.__id__);
-      delete args.__id__;
-    }
-    return callHook.call(this, hook, args)
-  };
   App(parseApp$1(vm));
   return vm
 }
@@ -1668,6 +1679,41 @@ function createComponent (vueOptions) {
   }
 }
 
+function createSubpackageApp (vm) {
+  const appOptions = parseApp$1(vm);
+  const app = getApp({
+    allowDefault: true
+  });
+  const globalData = app.globalData;
+  if (globalData) {
+    Object.keys(appOptions.globalData).forEach(name => {
+      if (!hasOwn(globalData, name)) {
+        globalData[name] = appOptions.globalData[name];
+      }
+    });
+  }
+  Object.keys(appOptions).forEach(name => {
+    if (!hasOwn(app, name)) {
+      app[name] = appOptions[name];
+    }
+  });
+  if (isFn(appOptions.onShow) && wx.onAppShow) {
+    wx.onAppShow((...args) => {
+      appOptions.onShow.apply(app, args);
+    });
+  }
+  if (isFn(appOptions.onHide) && wx.onAppHide) {
+    wx.onAppHide((...args) => {
+      appOptions.onHide.apply(app, args);
+    });
+  }
+  if (isFn(appOptions.onLaunch)) {
+    const args = wx.getLaunchOptionsSync && wx.getLaunchOptionsSync();
+    appOptions.onLaunch.call(app, args);
+  }
+  return vm
+}
+
 todos.forEach(todoApi => {
   protocols[todoApi] = false;
 });
@@ -1737,8 +1783,9 @@ if (typeof Proxy !== 'undefined' && "app-plus" !== 'app-plus') {
 wx.createApp = createApp;
 wx.createPage = createPage;
 wx.createComponent = createComponent;
+wx.createSubpackageApp = createSubpackageApp;
 
 var uni$1 = uni;
 
 export default uni$1;
-export { createApp, createComponent, createPage };
+export { createApp, createComponent, createPage, createSubpackageApp };

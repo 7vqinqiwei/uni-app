@@ -1,5 +1,5 @@
 
-## 简介
+## 简介@intro
 
 云函数是运行在云端的 `JavaScript` 代码，和普通的`Node.js`开发一样，熟悉`Node.js`的开发者可以直接上手。
 
@@ -28,21 +28,30 @@ exports.main = async (event, context) => {
   let appid = context.APPID // manifest.json中配置的appid
   let clientIP = context.CLIENTIP // 客户端ip信息
   let clientUA = context.CLIENTUA // 客户端user-agent
+  let deviceId = context.DEVICEID // 客户端标识，新增于HBuilderX 3.1.0，同uni-app客户端getSystemInfo接口获取的deviceId
+  let spaceInfo = context.SPACEINFO // 当前环境信息 {spaceId:'xxx',provider:'tencent'}
 	... //其它业务代码
 }
 ```
 
-**关于CLIENTIP、CLIENTUA**
+云函数url化的场景下无法获取`context.OS`、`context.PLATFORM`、`context.APPID`、`context.CLIENTUUID`
 
-- 通过管理端调用云函数（云函数上传并运行、腾讯云开发调试期间），使用腾讯云时想临时调试UA、IP等可以通过自行初始化`uniCloud`的方式（[同时连多服务空间](uniCloud/init.md)
-）传入`debugFunction: false`来实现客户端直连调用，需要注意的是此时控制台将不会打印云函数日志。
+>在云函数URL化的场景无法获取客户端平台信息，可以在调用依赖客户端平台的接口接口之前（推荐在云函数入口）通过修改context.PLATFORM手动传入客户端平台信息供其他插件（如：uni-id）使用
 
+例：
+
+```js
+exports.main = async (event, context) => {
+	context.PLATFORM = 'app-plus'
+}
+```
 
 云函数中如果要使用其他服务（比如mysql数据库、redis等），可以按照nodejs的写法即可。但注意这些非uniCloud数据库和云函数运行环境不在一起，访问速度受影响。
 
 **注意事项**
 
 - 服务商为阿里云时，暂不可使用相对路径读取文件（比如`fs.readFileSync('./info.txt')`），可以使用绝对路径`fs.readFileSync(path.resolve(__dirname,'./info.txt'))`
+- event大小不可超过100kb
 
 ## API列表
 
@@ -52,10 +61,10 @@ exports.main = async (event, context) => {
 |--							|--																						|
 |uniCloud.callFunction()	|云函数中调用另一个云函数 [见下](uniCloud/cf-functions?id=callbyfunction)				|
 |uniCloud.database()		|云数据库对象 [详情](uniCloud/cf-database.md)											|
-|uniCloud.uploadFile()		|云函数上传文件到云存储 [详情](uniCloud/storage?id=uploadfile)							|
+|uniCloud.uploadFile()		|云函数上传文件到云存储 [详情](uniCloud/storage?id=clouduploadfile)							|
 |uniCloud.downloadFile()	|云函数下载云存储的文件到云函数运行环境 [详情](uniCloud/storage?id=clouddownloadfile)	|
-|uniCloud.deleteFile()		|云函数删除云存储的文件 [详情](uniCloud/storage?id=deletefile)							|
-|uniCloud.getTempFileURL()	|获取云存储文件的临时路径 [详情](uniCloud/storage?id=gettempfileurl)					|
+|uniCloud.deleteFile()		|云函数删除云存储的文件 [详情](uniCloud/storage?id=clouddeletefile)							|
+|uniCloud.getTempFileURL()	|获取云存储文件的临时路径 [详情](uniCloud/storage?id=cloudgettempfileurl)					|
 |uniCloud.httpclient		|云函数中通过http连接其他系统 [见下](uniCloud/cf-functions?id=httpclient)				|
 |uniCloud.logger			|云函数中打印日志到uniCloud日志记录系统（非HBuilderX控制台）[详情](uniCloud/cf-logger)	|
 |uniCloud.sendSms()			|发送短信 [详见](uniCloud/send-sms.md)													|
@@ -117,15 +126,35 @@ exports.main = async (event, context) => {
 
 **示例代码**
 
-```
+```js
 const res = await uniCloud.httpclient.request(apiUrl, {
     method: 'POST',
     data: {
       test: 'testValue'
     },
-    dataType: 'json'
+    contentType: 'json', // 指定以application/json发送data内的数据
+    dataType: 'json' // 指定返回值为json格式，自动进行parse
   })
 console.log(res)
+```
+
+返回数据结构如下
+
+```js
+{
+	"data": {"name": "DCloud"}, // 响应内容
+	"status": 200, // 状态码
+	"headers": { // 响应头，仅作示例，不同服务器返回的有差异
+		"date": "Tue, 29 Dec 2020 08:10:30 GMT",
+		"content-type": "application/json",
+		"content-length": "276",
+		"connection": "keep-alive",
+		"server": "gunicorn/19.9.0",
+		"access-control-allow-origin": "*",
+		"access-control-allow-credentials": "true"
+	}
+}
+
 ```
 
 ## 使用npm
@@ -388,7 +417,7 @@ cloudfunction-config说明如下
 
 ## 注意事项
 
-### 云函数的启动模式（冷启动、热启动）
+### 云函数的启动模式（冷启动、热启动）@launchtype
 
 基于云函数按需执行的特点, 函数在不被触发的时候, 计算资源是不被激活的。
 

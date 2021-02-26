@@ -5,6 +5,7 @@
       :data="dataList"
       :pagination="paginationInternal"
       :loading="loading"
+      :hasMore="hasMore"
       :error="errorMessage"
     />
   </view>
@@ -28,7 +29,10 @@ const attrs = [
   'field',
   'getcount',
   'orderby',
-  'where'
+  'where',
+  'groupby',
+  'groupField',
+  'distinct'
 ]
 
 export default {
@@ -52,6 +56,14 @@ export default {
       type: String,
       default: ''
     },
+    orderby: {
+      type: String,
+      default: ''
+    },
+    where: {
+      type: [String, Object],
+      default: ''
+    },
     pageData: {
       type: String,
       default: 'add'
@@ -68,15 +80,35 @@ export default {
       type: [Boolean, String],
       default: false
     },
-    orderby: {
+    getone: {
+      type: [Boolean, String],
+      default: false
+    },
+    gettree: {
+      type: [Boolean, String],
+      default: false
+    },
+    gettreepath: {
+      type: [Boolean, String],
+      default: false
+    },
+    startwith: {
       type: String,
       default: ''
     },
-    where: {
-      type: [String, Object],
+    limitlevel: {
+      type: Number,
+      default: 10
+    },
+    groupby: {
+      type: String,
       default: ''
     },
-    getone: {
+    groupField: {
+      type: String,
+      default: ''
+    },
+    distinct: {
       type: [Boolean, String],
       default: false
     },
@@ -88,17 +120,19 @@ export default {
   data () {
     return {
       loading: false,
-      dataList: this.getone ? {} : [],
-      paginationInternal: {
-        current: this.pageCurrent,
-        size: this.pageSize,
-        count: 0
-      },
+      hasMore: false,
+      dataList: this.getone ? undefined : [],
+      paginationInternal: {},
       errorMessage: ''
     }
   },
   created () {
     this._isEnded = false
+    this.paginationInternal = {
+      current: this.pageCurrent,
+      size: this.pageSize,
+      count: 0
+    }
 
     this.$watch(() => {
       var al = []
@@ -107,7 +141,7 @@ export default {
       })
       return al
     }, (newValue, oldValue) => {
-      this.paginationInternal.pageSize = this.pageSize
+      this.paginationInternal.size = this.pageSize
 
       let needReset = false
       for (let i = 2; i < newValue.length; i++) {
@@ -188,9 +222,14 @@ export default {
   methods: {
     loadData (args1, args2) {
       let callback = null
+      let clear = false
       if (typeof args1 === 'object') {
         if (args1.clear) {
-          this.clear()
+          if (this.pageData === pageMode.replace) {
+            this.clear()
+          } else {
+            clear = args1.clear
+          }
           this.reset()
         }
         if (args1.current !== undefined) {
@@ -203,7 +242,7 @@ export default {
         callback = args1
       }
 
-      this._execLoadData(callback)
+      this._execLoadData(callback, clear)
     },
     loadMore () {
       if (this._isEnded) {
@@ -223,6 +262,8 @@ export default {
       this.paginationInternal.current = 1
     },
     add (value, {
+      action,
+      showToast = true,
       toastTitle,
       success,
       fail,
@@ -230,12 +271,18 @@ export default {
     } = {}) {
       uni.showLoading()
       /* eslint-disable no-undef */
-      const db = uniCloud.database()
+      let db = uniCloud.database()
+      if (action) {
+        db = db.action(action)
+      }
+
       db.collection(this.collection).add(value).then((res) => {
         success && success(res)
-        uni.showToast({
-          title: toastTitle || '新增成功'
-        })
+        if (showToast) {
+          uni.showToast({
+            title: toastTitle || '新增成功'
+          })
+        }
       }).catch((err) => {
         fail && fail(err)
         uni.showModal({
@@ -271,6 +318,8 @@ export default {
       })
     },
     update (id, value, {
+      action,
+      showToast = true,
       toastTitle,
       success,
       fail,
@@ -278,12 +327,18 @@ export default {
     } = {}) {
       uni.showLoading()
       /* eslint-disable no-undef */
-      const db = uniCloud.database()
+      let db = uniCloud.database()
+      if (action) {
+        db = db.action(action)
+      }
+
       return db.collection(this.collection).doc(id).update(value).then((res) => {
         success && success(res)
-        uni.showToast({
-          title: toastTitle || '修改成功'
-        })
+        if (showToast) {
+          uni.showToast({
+            title: toastTitle || '修改成功'
+          })
+        }
       }).catch((err) => {
         fail && fail(err)
         uni.showModal({
@@ -295,7 +350,7 @@ export default {
         complete && complete()
       })
     },
-    _execLoadData (callback) {
+    _execLoadData (callback, clear) {
       if (this.loading) {
         return
       }
@@ -309,19 +364,24 @@ export default {
           count
         } = res.result
         this._isEnded = data.length < this.pageSize
+        this.hasMore = !this._isEnded
 
         const data2 = this.getone ? (data.length ? data[0] : undefined) : data
 
         callback && callback(data2, this._isEnded)
         this._dispatchEvent(events.load, data2)
 
-        if (this.pageData === pageMode.add) {
-          this.dataList.push(...data2)
+        if (this.getone || this.pageData === pageMode.replace) {
+          this.dataList = data2
+        } else {
+          if (clear) {
+            this.dataList = data2
+          } else {
+            this.dataList.push(...data2)
+          }
           if (this.dataList.length) {
             this.paginationInternal.current++
           }
-        } else {
-          this.dataList = data2
         }
 
         if (this.getcount) {
@@ -331,7 +391,12 @@ export default {
         // #ifdef H5
         if (process.env.NODE_ENV === 'development') {
           this._debugDataList.length = 0
-          this._debugDataList.push(...JSON.parse(JSON.stringify(this.dataList)))
+          const formatData = JSON.parse(JSON.stringify(this.dataList))
+          if (Array.isArray(this.dataList)) {
+            this._debugDataList.push(...formatData)
+          } else {
+            this._debugDataList.push(formatData)
+          }
         }
         // #endif
       }).catch((err) => {
@@ -360,6 +425,15 @@ export default {
       if (this.field) {
         db = db.field(this.field)
       }
+      if (this.groupby) {
+        db = db.groupBy(this.groupby)
+      }
+      if (this.groupField) {
+        db = db.groupField(this.groupField)
+      }
+      if (this.distinct === true) {
+        db = db.distinct()
+      }
       if (this.orderby) {
         db = db.orderBy(this.orderby)
       }
@@ -368,9 +442,21 @@ export default {
         current,
         size
       } = this.paginationInternal
-      db = db.skip(size * (current - 1)).limit(size).get({
-        getCount: this.getcount
-      })
+      const getOptions = {}
+      if (this.getcount) {
+        getOptions.getCount = this.getcount
+      }
+      const treeOptions = {
+        limitLevel: this.limitlevel,
+        startWith: this.startwith
+      }
+      if (this.gettree) {
+        getOptions.getTree = treeOptions
+      }
+      if (this.gettreepath) {
+        getOptions.getTreePath = treeOptions
+      }
+      db = db.skip(size * (current - 1)).limit(size).get(getOptions)
 
       return db
     },

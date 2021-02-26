@@ -8,7 +8,7 @@
 
 1个应用开发的一半的工作量，就此直接省去。
 
-当然使用`clientDB`需要扭转传统后台开发观念，不再编写云函数，直接在前端操作数据库。但是为了数据安全，需要在数据库上配置`DB Schema`。
+当然使用`clientDB`需要扭转传统后台开发观念，不再编写服务端代码，直接在前端操作数据库。但是为了数据安全，需要在数据库上配置`DB Schema`。
 
 在`DB Schema`中，配置数据操作的权限和字段值域校验规则，阻止前端不恰当的数据读写。详见：[DB Schema](https://uniapp.dcloud.net.cn/uniCloud/schema)
 
@@ -23,14 +23,14 @@
 ## clientDB图解
 ![](https://static-eefb4127-9f58-4963-a29b-42856d4205ee.bspapp.com/clientdb.jpg)
 
-`clientDB`的前端部分包括js API和`<unicloud-db>`组件两部分。
+`clientDB`的前端，有两种用法，可以用js API操作云数据库，也可以使用`<unicloud-db>`组件。
 
 js API可以执行所有数据库操作。`<unicloud-db>`组件是js API的再封装，进一步简化查询等常用数据库操作的代码量。
 
 - 在HBuilderX 3.0+，`<unicloud-db>`组件已经内置，可以直接使用。文档另见：[<unicloud-db>组件](/uniCloud/unicloud-db)
 - 在HBuilderX 3.0以前的版本，使用该组件需要在插件市场单独引用`<uni-clientDB>插件`，另见：[https://ext.dcloud.net.cn/plugin?id=3256](https://ext.dcloud.net.cn/plugin?id=3256)
 
-以下文章重点介绍`clientDB`的js API。组件的使用语法类似，但请单独查阅组件的文档。
+以下文章重点介绍`clientDB`的js API。至于组件的用法，另见[文档](/uniCloud/unicloud-db)。
 
 ## clientDB前端API@jssdk
 
@@ -53,7 +53,8 @@ db.collection('list')
   .then((res)=>{
     // res 为数据库查询结果
   }).catch((err)=>{
-    
+    console.log(err.code); // 打印错误码
+		console.log(err.message); // 打印错误内容
   })
 ```
 
@@ -66,9 +67,9 @@ db.collection('list')
 - 更新数据库时不可使用更新操作符`db.command.inc`等
 - 更新数据时键值不可使用`{'a.b.c': 1}`的形式，需要写成`{a:{b:{c:1}}}`形式（后续会对此进行优化）
 
-### 返回值说明@returnvalue
+### err返回值说明@returnvalue
 
-`clientDB`云端默认返回值形式如下，开发者可以在[action](uniCloud/database?id=action)的`after`内用js修改返回结果，传入`after`内的result不带code和message。
+`clientDB`如果云端返回错误，err的返回值形式如下，
 
 ```js
 {
@@ -78,7 +79,7 @@ db.collection('list')
 }
 ```
 
-**错误码列表**
+**err.code错误码列表**
 
 |错误码													|描述																		|
 |:-:														|:-:																		|
@@ -86,36 +87,65 @@ db.collection('list')
 |TOKEN_INVALID									|token校验未通过（云端已不包含此token）	|
 |TOKEN_INVALID_TOKEN_EXPIRED		|token校验未通过（token已过期）					|
 |TOKEN_INVALID_WRONG_TOKEN			|token校验未通过（token校验未通过）			|
+|TOKEN_INVALID_ANONYMOUS_USER   |token校验未通过（当前用户为匿名用户）		|
 |SYNTAX_ERROR										|语法错误																|
 |PERMISSION_ERROR								|权限校验未通过													|
 |VALIDATION_ERROR								|数据格式未通过													|
 |DUPLICATE_KEY									|索引冲突																|
 |SYSTEM_ERROR										|系统错误																|
 
-### 前端环境变量@variable
+如需自定义返回的err对象，可以在clientDB中挂一个[action云函数](uniCloud/database?id=action)，在action云函数的`after`内用js修改返回结果，传入`after`内的result不带code和message。
+
+
+### 云端环境变量@variable
 
 `clientDB`目前内置了3个变量可以供客户端使用，客户端并非直接获得这三个变量的值，而是需要传递给云端，云数据库在数据入库时会把变量替换为实际值。
 
-|参数名			|说明				|
-|:-:			|:-:				|
-|db.env.uid		|用户uid，依赖uni-id|
-|db.env.now		|服务器时间戳		|
-|db.env.clientIP|当前客户端IP		|
+|参数名					|说明								|
+|:-:						|:-:								|
+|db.env.uid			|用户uid，依赖uni-id|
+|db.env.now			|服务器时间戳				|
+|db.env.clientIP|当前客户端IP				|
 
 使用这些变量，将可以避免过去在服务端代码中写代码获取用户uid、时间和客户端ip的麻烦。
 
 ```js
 const db = uniCloud.database()
 let res = await db.collection('table').where({
-  user_id: db.env.uid // 查询当前用户的数据
+  user_id: db.env.uid // 查询当前用户的数据。虽然代码编写在客户端，但环境变量会在云端运算
 }).get()
+```
+
+自`HBuilderX 3.1.0`起，上述环境变量用法有调整（旧版依然兼容，但是推荐使用新用法），以下示例为在新版HBuilderX下如何获取上述变量
+
+```js
+const db = uniCloud.database()
+const uid = db.getCloudEnv('$cloudEnv_uid')
+const now = db.getCloudEnv('$cloudEnv_now')
+const clientIP = db.getCloudEnv('$cloudEnv_clientIP')
+```
+
+使用JQL查询语法时如需使用上述变量可以使用如下写法
+
+```js
+// HBuilderX 3.1.0及以上版本
+const db = uniCloud.database()
+const res = await db.collection()
+.where('user_id == $cloudEnv_uid')
+.get()
+
+// HBuilderX 3.1.0以下版本
+const db = uniCloud.database()
+const res = await db.collection()
+.where('user_id == $env.uid')  // $env.now、$env.clientIP
+.get()
 ```
 
 ### JQL查询语法@jsquery
 
 `jql`，全称javascript query language，是一种js方式操作数据库的语法规范。
 
-`jql`大幅降低了js工程师操作数据库的难度、大幅缩短开发代码量。并利用json数据库的嵌套特点，极大的简化了联表查询的复杂度。
+`jql`大幅降低了js工程师操作数据库的难度、大幅缩短开发代码量。并利用json数据库的嵌套特点，极大的简化了联表查询和树查询的复杂度。
 
 #### jql的诞生背景
 
@@ -138,7 +168,7 @@ let res = await db.collection('table').where({
 
 sql写法，对js工程师而言有学习成本，而且无法处理非关系型的MongoDB数据库，以及sql的联表查询inner join、left join也并不易于学习。
 
-而nosql的写法，实在过于复杂。
+而nosql的写法，实在过于复杂。比如如下3个例子：
 
 1. 运算符需要转码，`>`需要使用`gt`方法、`==`需要使用`eq`方法
 
@@ -261,7 +291,73 @@ sql写法，对js工程师而言有学习成本，而且无法处理非关系型
 
 具体到这个正则 `/abc/.test(content)`，类似于sql中的`content like '%abc%'`，即查询所有字段content包含abc的数据记录。
 
+**云函数中node版本为8.9不支持正则断言**
+
 **注意编写查询条件时，除test外，均为运算符左侧为数据库字段，右侧为常量**
+
+#### 查询数组字段@querywitharr
+
+如果数据库存在以下记录
+
+```js
+{
+  "_id": "1",
+  "students": ["li","wang"]
+}
+{
+  "_id": "2",
+  "students": ["wang","li"]
+}
+{
+  "_id": "3",
+  "students": ["zhao","qian"]
+}
+```
+
+使用jql查询语法时，可以直接使用`student=='wang'`作为查询条件来查询students内包含wang的记录。
+
+#### 常见正则用法@regexp
+
+**搜索用户输入值**
+
+如果使用[unicloud-db组件](uniCloud/unicloud-db.md)写法如下，使用clientDB jssdk同理
+
+```html
+<template>
+	<view class="content">
+		<input @input="onKeyInput" placeholder="请输入搜索值" />
+		<unicloud-db v-slot:default="{data, loading, error, options}" collection="goods" :where=`${new RegExp(searchVal, 'i')}.test(name)`>
+			<view v-if="error">{{error.message}}</view>
+			<view v-else>
+				
+			</view>
+		</unicloud-db>
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+        searchVal: ''
+      }
+		},
+		methods: {
+      onKeyInput(e){
+        // 实际开发中这里应该还有防抖或者节流操作，这里不做演示
+        this.searchVal = e.target.value
+      }
+		}
+	}
+</script>
+
+<style>
+</style>
+
+```
+
+上面的示例中使用了正则修饰符`i`，用于表示忽略大小写，更多修饰符见[MDN 通过标志进行高级搜索](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Guide/Regular_Expressions#%E9%80%9A%E8%BF%87%E6%A0%87%E5%BF%97%E8%BF%9B%E8%A1%8C%E9%AB%98%E7%BA%A7%E6%90%9C%E7%B4%A2)
+
 
 ### JQL联表查询@lookup
 
@@ -445,20 +541,189 @@ db.collection('order')
 - field参数字符串内没有冒号，{}为联表查询标志
 - 联表查询时关联字段会被替换成被关联表的内容，因此不可在where内使用关联字段作为条件。举个例子，在上面的示例，`where({book_id:"1"})`，但是可以使用`where({'book_id._id':"1"})`
 - 上述示例中如果order表的`book_id`字段是数组形式存放多个book_id，也跟上述写法一致，clientDB会自动根据字段类型进行联表查询
+- 各个表的_id字段会默认带上，即使没有指定返回
+
+### 查询条件@where
+
+jql对查询条件进行了简化，开发者可以使用`where('a==1||b==2')`来表示字段`a等于1或字段b等于2`。如果不适用jql语法，上述条件需要写成下面这种形式
+
+```js
+const db = uniCloud.database()
+const dbCmd = db.command
+const res = await db.collection('test')
+  .where(
+    dbCmd.or({
+      a:1
+    },{
+      b:2
+    })
+  )
+  .get()
+```
+
+两种用法性能上并没有太大差距，可以视场景选择合适的写法。
+
+jql支持两种类型的查询条件，以下内容有助于理解两种的区别，实际书写的时候无需过于关心是简单查询条件还是复杂查询条件，**JQL会自动进行选择**
+
+where内还支持使用云端环境变量，详情参考：[云端环境变量](uniCloud/clientdb.md?id=variable)
+
+#### 简单查询条件@simple-where
+
+简单查询条件包括以下几种，对应着db.command下的各种[操作符](https://uniapp.dcloud.net.cn/uniCloud/cf-database?id=dbcmd)以及不使用操作符的查询如`where({a:1})`。
+
+|运算符				|说明			|
+|---					|---			|
+|>						|大于			|
+|<						|小于			|
+|==						|等于			|
+|>=						|大于等于	|
+|<=						|小于等于	|
+|!=						|大于			|
+|&&						|与				|
+|&#124;&#124;	|或				|
+|!						|非				|
+|test					|正则			|
+
+简单查询条件内要求二元运算符两侧不可均为数据库内的字段
+
+上述写法的查询语句可以在权限校验阶段与schema内配置的permission进行一次对比校验，如果校验通过则不会再查库进行权限校验。
+
+#### 复杂查询条件@complex-where
+
+> HBuilderX 3.1.0起支持
+
+复杂查询内可以使用[数据库运算方法](uniCloud/clientdb.md?id=aggregate-operator)。需要注意的是，与云函数内使用聚合操作符不同jql内对数据库运算方法的用法进行了简化。
+
+例：数据表test内有以下数据
+
+```js
+{
+  "_id": "1",
+  "name": "n1",
+  "chinese": 60, // 语文
+  "math": 60 // 数学
+}
+{
+  "_id": "2",
+  "name": "n2",
+  "chinese": 60,
+  "math": 70
+}
+{
+  "_id": "3",
+  "name": "n3",
+  "chinese": 100,
+  "math": 90
+}
+```
+
+使用如下写法可以筛选语文数学总分大于150的数据
+
+```js
+const db = uniCloud.database()
+const res = await db.collection('test')
+.where('add(chinese,math) > 150')
+.get()
+
+// 返回结果如下
+res = {
+  result: {
+    data: [{
+      "_id": "3",
+      "name": "n3",
+      "chinese": 100,
+      "math": 90
+    }]
+  }
+}
+```
+
+另外与简单查询条件相比，复杂查询条件可以比较数据库内的两个字段，简单查询条件则要求二元运算符两侧不可均为数据库内的字段，**JQL会自动判断要使用简单查询还是复杂查询条件**。
+
+例：仍以上面的数据为例，以下查询语句可以查询数学得分比语文高的记录
+
+```js
+const db = uniCloud.database()
+const res = await db.collection('test')
+.where('math > chinese')
+.get()
+
+// 返回结果如下
+res = {
+  result: {
+    data: [{
+      "_id": "2",
+      "name": "n2",
+      "chinese": 60,
+      "math": 70
+    }]
+  }
+}
+```
+
+在查询条件时也可以使用`new Date()`来获取一个日期对象。
+
+例：数据表test内有以下数据
+
+```js
+{
+  "_id": "1",
+  "title": "t1",
+  "deadline": 1611998723948
+}
+{
+  "_id": "2",
+  "title": "t2",
+  "deadline": 1512312311231
+}
+```
+
+使用下面的写法可以查询deadline小于当前时间（云函数内的时间）的字段
+
+```js
+const db = uniCloud.database()
+const res = await db.collection('test')
+.where('deadline < new Date().getTime()') // 暂不支持使用Date.now()，后续会支持
+.get()
+```
+
+**注意**
+
+- 使用了复杂查询条件时不可以使用正则查询
+- 不同于简单查询条件，复杂查询条件必然会进行查库校验权限
 
 ### 查询列表分页
 
-`jql`提供了更简单的分页方法，包括两种模式：
+可以通过skip+limit来进行分页查询
+
+```js
+const db = uniCloud.database()
+db.collection('book')
+  .where('status == "onsale"')
+  .skip(20) // 跳过前20条
+  .limit(20) // 获取20条
+  .get()
+  
+// 上述用法对应的分页条件为：每页20条取第2页
+```
+
+**注意**
+
+- limit不设置的情况下默认返回100条数据；设置limit有最大值，腾讯云限制为最大1000条，阿里云限制为最大500条。
+
+`<unicloud-db>`组件提供了更简单的分页方法，包括两种模式：
 
 1. 滚动到底加载下一页
 2. 点击页码按钮切换不同页
 
-推荐通过`<uni-clientDB>`组件渲染分页列表，详见：[https://uniapp.dcloud.net.cn/uniCloud/uni-clientdb-component?id=page](https://uniapp.dcloud.net.cn/uniCloud/uni-clientdb-component?id=page)
+详见：[https://uniapp.dcloud.net.cn/uniCloud/unicloud-db?id=page](https://uniapp.dcloud.net.cn/uniCloud/unicloud-db?id=page)
 
 
 ### 指定返回字段@field
 
 查询时可以使用field方法指定返回字段，在`<uni-clientDB>`组件中也支持field属性。不使用field方法时会返回所有字段
+
+只有使用传统MongoDB的写法{ '_id': false }明确指定不要返回_id，否则_id字段一定会返回。
 
 ### 别名@alias
 
@@ -511,6 +776,55 @@ db.collection('order,book')
 
 - 上面的查询指令中，上一阶段处理结果输出到下一阶段，上面的例子中表现为where中使用的是原名，orderBy中使用的是别名
 - 目前不支持对联表查询的关联字段使用别名，即上述示例中的book_id不可设置别名
+
+### 对字段操作后返回@operator
+
+自`HBuilderX 3.1.0`起，clientDB支持对字段进行一定的操作之后再返回，详细可用的方法列表请参考：[数据库运算方法](uniCloud/clientdb.md?id=aggregate-operator)
+
+> 需要注意的是，为方便书写，clientDB内将数据库运算方法的用法进行了简化（相对于云函数内使用数据库运算方法而言）。用法请参考上述链接
+
+例：数据表class内有以下数据
+
+```js
+{
+  "_id": "1",
+  "grade": 6,
+  "class": "A"
+}
+{
+  "_id": "1",
+  "grade": 2,
+  "class": "A"
+}
+```
+
+如下写法可以由grade计算得到一个isTopGrade来表示是否为最高年级
+
+```js
+const res = await db.collection('class')
+.field('class,eq(grade,6) as isTopGrade')
+.get()
+```
+
+返回结果如下
+
+```js
+{
+  "_id": "1",
+  "class": "A",
+  "isTopGrade": true
+}
+{
+  "_id": "1",
+  "class": "A",
+  "isTopGrade": false
+}
+```
+
+**注意**
+
+- 如果要访问数组的某一项请使用arrayElemAt操作符，形如：`arrayElemAt(arr,1)`
+- 在进行权限校验时，会计算field内访问的所有字段计算权限。上面的例子中会使用表的read权限和grade、class字段的权限，来进行权限校验。
 
 ### 排序orderBy@orderby
 
@@ -643,6 +957,829 @@ const db = uniCloud.database()
   }
 }
 ```
+
+### 查询树形数据gettree@gettree
+
+HBuilderX 3.0.3+起，clientDB支持在get方法内传入getTree参数查询树状结构数据。（HBuilderX 3.0.5+ unicloud-db组件开始支持，之前版本只能通过js方式使用）
+
+树形数据，在数据库里一般不会按照tree的层次来存储，因为按tree结构通过json对象的方式存储不同层级的数据，不利于对tree上的某个节点单独做增删改查。
+
+一般存储树形数据，tree上的每个节点都是一条单独的数据表记录，然后通过类似parent_id来表达父子关系。
+
+如部门的数据表，里面有2条数据，一条数据记录是“总部”，`parent_id`为空；另一条数据记录“一级部门A”，`parent_id`为总部的`_id`
+```json
+{
+    "_id": "5fe77207974b6900018c6c9c",
+    "name": "总部",
+    "parent_id": "",
+    "status": 0
+}
+```
+```json
+{
+    "_id": "5fe77232974b6900018c6cb1",
+    "name": "一级部门A",
+    "parent_id": "5fe77207974b6900018c6c9c",
+    "status": 0
+}
+```
+
+虽然存储格式是分条记录的，但查询反馈到前端的数据仍然需要是树形的。这种转换在过去比较复杂。
+
+clientDB提供了一种简单、优雅的方案，在DB Schema里配置parentKey来表达父子关系，然后查询时声明使用Tree查询，就可以直接查出树形数据。
+
+department部门表的schema中，将字段`parent_id`的"parentKey"设为"_id"，即指定了数据之间的父子关系，如下：
+
+```json
+{
+  "bsonType": "object",
+  "required": ["name"],
+  "properties": {
+    "_id": {
+      "description": "ID，系统自动生成"
+    },
+      "name": {
+      "bsonType": "string",
+      "description": "名称"
+    },
+    "parent_id": {
+      "bsonType": "string",
+      "description": "父id",
+      "parentKey": "_id", // 指定父子关系为：如果数据库记录A的_id和数据库记录B的parent_id相等，则A是B的父级。
+    },
+    "status": {
+      "bsonType": "int",
+      "description": "部门状态，0-正常、1-禁用"
+    }
+  }
+}
+```
+
+parentKey字段将数据表不同记录的父子关系描述了出来。查询就可以直接写了。
+
+注意一个表内只能有一个父子关系，即一个表的schema里只能配置一份parentKey。
+
+schema里描述好后，查询就变的特别简单。
+
+查询树形数据，分为 查询所有子节点 和 查询父级路径 这2种需求。
+
+#### 查询所有子节点
+
+指定符合条件的记录，然后查询它的所有子节点，并且可以指定层级，返回的结果是以符合条件的记录为一级节点的所有子节点数据，并以树形方式嵌套呈现。
+
+只需要在clientDB的get方法中增加`getTree`参数，如下
+```js
+// get方法示例
+get({
+  getTree: {
+    limitLevel: 10, // 最大查询层级（不包含当前层级），可以省略默认10级，最大15，最小1
+    startWith: "parent_code==''"  // 第一层级条件，此初始条件可以省略，不传startWith时默认从最顶级开始查询
+  }
+})
+```
+
+完整的代码如下：
+```js
+db.collection("department").get({
+		getTree: {}
+	})
+	.then((res) => {
+		const resdata = res.result.data
+		console.log("resdata", resdata);
+	}).catch((err) => {
+		uni.showModal({
+			content: err.message || '请求服务失败',
+			showCancel: false
+		})
+	}).finally(() => {
+		
+	})
+```
+
+查询的结果如下：
+```json
+"data": [{
+	"_id": "5fe77207974b6900018c6c9c",
+	"name": "总部",
+	"parent_id": "",
+	"status": 0,
+	"children": [{
+		"_id": "5fe77232974b6900018c6cb1",
+		"name": "一级部门A",
+		"parent_id": "5fe77207974b6900018c6c9c",
+		"status": 0,
+		"children": []
+	}]
+}]
+```
+
+可以看出，每个子节点，被嵌套在父节点的"children"下，这个"children"是一个固定的格式。
+
+如果不指定getTree的参数，会把department表的所有数据都查出来，从总部开始到10级部门，以树形结构提供给客户端。
+
+如果有多个总部，即多行记录的`parent_id`为空，则多个总部会分别作为一级节点，把它们下面的所有children一级一级拉出来。如下：
+
+```json
+"data": [
+	{
+		"_id": "5fe77207974b6900018c6c9c",
+		"name": "总部",
+		"parent_id": "",
+    "status": 0,
+		"children": [{
+				"_id": "5fe77232974b6900018c6cb1",
+				"name": "一级部门A",
+				"parent_id": "5fe77207974b6900018c6c9c",
+				"status": 0,
+				"children": []
+		}]
+	},
+	{
+		"_id": "5fe778a10431ca0001c1e2f8",
+		"name": "总部2",
+		"parent_id": "",
+		"children": [{
+				"_id": "5fe778e064635100013efbc2",
+				"name": "总部2的一级部门B",
+				"parent_id": "5fe778a10431ca0001c1e2f8",
+				"children": []
+		}]
+	}
+]
+```
+
+
+如果觉得返回的`parent_id`字段多余，也可以指定`.field("_id,name")`，过滤掉该字段。
+
+**getTree的参数limitLevel的说明**
+
+limitLevel表示查询返回的树的最大层级。超过设定层级的节点不会返回。
+
+- limitLevel的默认值为10。
+- limitLevel的合法值域为1-15之间（包含1、15）。如果数据实际层级超过15层，请分层懒加载查询。
+- limitLevel为1，表示向下查一级子节点。假如数据库中有2级、3级部门，如果设limitLevel为1，且查询的是“总部”，那么返回数据包含“总部”和其下的一级部门。
+
+**getTree的参数startWith的说明**
+
+如果只需要查“总部”的子部门，不需要“总部2”，可以在startWith里指定（`getTree: {"startWith":"name=='总部'"}`）。
+
+使用中请注意startWith和where的区别。where用于描述对所有层级的生效的条件（包括第一层级）。而startWith用于描述从哪个或哪些节点开始查询树。
+
+startWith不填时，默认的条件是 `'parent_id==null||parent_id==""'`，即schema配置parentKey的字段为null（即不存在）或值为空字符串时，这样的节点被默认视为根节点。
+
+假设上述部门表内有以下数据
+
+```js
+{
+    "_id": "1",
+    "name": "总部",
+    "parent_id": "",
+    "status": 0
+}
+{
+    "_id": "11",
+    "name": "一级部门A",
+    "parent_id": "1",
+    "status": 0
+}
+{
+    "_id": "12",
+    "name": "一级部门B",
+    "parent_id": "1",
+    "status": 1
+}
+```
+
+以下查询语句指定startWith为`_id=="1"`、where条件为`status==0`，查询总部下所有status为0的子节点。
+
+```js
+db.collection("department")
+  .where('status==0')
+  .get({
+    getTree: {
+      startWith: '_id=="1"'
+    }
+	})
+	.then((res) => {
+		const resdata = res.result.data
+		console.log("resdata", resdata);
+	}).catch((err) => {
+		uni.showModal({
+			content: err.message || '请求服务失败',
+			showCancel: false
+		})
+	}).finally(() => {
+		
+	})
+```
+
+查询的结果如下：
+```json
+{
+  "data": [{
+    "_id": "1",
+    "name": "总部",
+    "parent_id": "",
+    "status": 0,
+    "children": [{
+      "_id": "11",
+      "name": "一级部门A",
+      "parent_id": "1",
+      "status": 0,
+      "children": []
+    }]
+  }]
+}
+```
+
+**需要注意的是where内的条件也会对第一级数据生效**，例如将上面的查询改成如下写法
+
+```js
+db.collection("department")
+  .where('status==1')
+  .get({
+    getTree: {
+      startWith: '_id=="1"'
+    }
+	})
+	.then((res) => {
+		const resdata = res.result.data
+		console.log("resdata", resdata);
+	}).catch((err) => {
+		uni.showModal({
+			content: err.message || '请求服务失败',
+			showCancel: false
+		})
+	}).finally(() => {
+		
+	})
+```
+
+此时将无法查询到数据，返回结果如下
+
+```js
+{
+  "data": []
+}
+```
+
+**示例**
+
+插件市场有一个 家谱 的示例，可以参阅：[https://ext.dcloud.net.cn/plugin?id=3798](https://ext.dcloud.net.cn/plugin?id=3798)
+
+
+**大数据量的树形数据查询**
+
+如果tree的数据量较大，则不建议一次性把所有的树形数据返回给客户端。建议分层查询，即懒加载。
+
+比如地区选择的场景，全国的省市区数据量很大，一次性查询所有数据返回给客户端非常耗时和耗流量。可以先查省，然后根据选择的省再查市，以此类推。
+
+**注意**
+
+- 暂不支持使用getTree的同时使用联表查询
+- 如果使用了where条件会对所有查询的节点生效
+- 如果使用了limit设置最大返回数量仅对根节点生效
+
+#### 查询树形结构父节点路径@gettreepath
+
+getTree是查询子节点，而getTreePath，则是查询父节点。
+
+get方法内传入getTreePath参数对包含父子关系的表查询返回树状结构数据某节点路径。
+
+```js
+// get方法示例
+get({
+  getTreePath: {
+    limitLevel: 10, // 最大查询层级（不包含当前层级），可以省略默认10级，最大15，最小1
+    startWith: 'name=="一级部门A"'  // 末级节点的条件，此初始条件不可以省略
+  }
+})
+```
+
+查询返回的结果为，从“一级部门A”起向上找10级，找到最终节点后，以该节点为根，向下嵌套children，一直到达“一级部门A”。
+
+返回结果只包括“一级部门A”的直系父，其父节点的兄弟节点不会返回。所以每一层数据均只有一个节点。
+
+仍以上面department的表结构和数据为例
+
+```js
+db.collection("department").get({
+		getTreePath: {
+			"startWith": "_id=='5fe77232974b6900018c6cb1'"
+		}
+	})
+	.then((res) => {
+		const treepath = res.result.data
+		console.log("treepath", treepath);
+	}).catch((err) => {
+		uni.showModal({
+			content: err.message || '请求服务失败',
+			showCancel: false
+		})
+	}).finally(() => {
+		uni.hideLoading()
+		// console.log("finally")
+	})
+```
+
+查询返回结果
+
+从根节点“总部”开始，返回到“一级部门A”。“总部2”等节点不会返回。
+
+```json
+{
+  "data": [{
+		"_id": "5fe77207974b6900018c6c9c",
+		"name": "总部",
+		"parent_id": "",
+		"children": [{
+			"_id": "5fe77232974b6900018c6cb1",
+			"name": "一级部门A",
+			"parent_id": "5fe77207974b6900018c6c9c"
+		}]
+	}]
+}
+```
+
+如果startWith指定的节点没有父节点，则返回自身。
+
+如果startWith匹配的节点不止一个，则以数组的方式，返回每个节点的treepath。
+
+例如“总部”和“总部2”下面都有一个部门的名称叫“销售部”，且`	"startWith": "name=='销售部'"`，则会返回“总部”和“总部2”两条treepath，如下
+
+```json
+{
+	"data": [{
+		"_id": "5fe77207974b6900018c6c9c",
+		"name": "总部",
+		"parent_id": "",
+		"children": [{
+			"_id": "5fe77232974b6900018c6cb1",
+			"name": "销售部",
+			"parent_id": "5fe77207974b6900018c6c9c"
+		}]
+		}, {
+		"_id": "5fe778a10431ca0001c1e2f8",
+		"name": "总部2",
+		"parent_id": "",
+		"children": [{
+			"_id": "5fe79fea23976b0001508a46",
+			"name": "销售部",
+			"parent_id": "5fe778a10431ca0001c1e2f8"
+		}]
+	}]
+}
+```
+
+
+**注意**
+
+- 暂不支持使用getTreePath的同时使用其他联表查询语法
+- 如果使用了where条件会对所有查询的节点生效
+
+### 分组统计groupby@groupby
+
+> 本地调试支持：`HBuilderX 3.1.0`+；云端支持：2021-1-26日后更新一次云端 DB Schema 生效
+
+数据分组统计，即根据某个字段进行分组（groupBy），然后对其他字段分组后的值进行求和、求数量、求均值。
+
+比如统计每日新增用户数，就是按时间进行分组，对每日的用户记录进行count运算。
+
+分组统计有groupBy和groupField。和传统sql略有不同，传统sql没有单独的groupField。
+
+JQL的groupField里不能直接写field字段，只能使用[分组运算方法](uniCloud/clientdb.md?id=accumulator)来处理字段，常见的累积器计算符包括：count(*)、sum(字段名称)、avg(字段名称)。更多分组运算方法[详见](uniCloud/clientdb.md?id=accumulator)
+
+其中count(*)是固定写法。
+
+分组统计的写法如下：
+
+```js
+const res = await db.collection('table1').groupBy('field1,field2').groupField('sum(field3) as field4').get()
+```
+
+如果额外还在groupBy之前使用了field方法，那么此field的含义并不是最终返回的字段，而是用于对字段预处理，然后将预处理的字段传给groupBy和groupField使用。
+
+与field不同，使用groupField时返回结果不会默认包含`_id`字段。同时开发者也不应该在groupBy和groupField里使用`_id`字段，`_id`是唯一的，没有统一意义。
+
+举例：
+如果数据库`score`表为某次比赛统计的分数数据，每条记录为一个学生的分数。学生有所在的年级（grade）、班级（class）、姓名（name）、分数（score）等字段属性。
+
+```js
+{
+  _id: "1",
+  grade: "1",
+  class: "A",
+  name: "zhao",
+  score: 5
+}
+{
+  _id: "2",
+  grade: "1",
+  class: "A",
+  name: "qian",
+  score: 15
+}
+{
+  _id: "3",
+  grade: "1",
+  class: "B",
+  name: "li",
+  score: 15
+}
+{
+  _id: "4",
+  grade: "1",
+  class: "B",
+  name: "zhou",
+  score: 25
+}
+{
+  _id: "5",
+  grade: "2",
+  class: "A",
+  name: "wu",
+  score: 25
+}
+{
+  _id: "6",
+  grade: "2",
+  class: "A",
+  name: "zheng",
+  score: 35
+}
+```
+
+接下来我们对这批数据进行分组统计，分别演示如何使用求和、求均值和计数。
+
+#### 求和、求均值示例
+
+groupBy内也可以使用数据库运算方法对数据进行处理，为方便书写，clientDB内将数据库运算方法的用法进行了简化（相对于云函数内使用数据库运算方法而言）。用法请参考：[数据库运算方法](uniCloud/clientdb.md?id=aggregate-operator)
+
+groupField内可以使用分组运算方法对分组结果进行统计，所有可用的累计方法请参考[分组运算方法](uniCloud/clientdb.md?id=accumulator)，下面以sum（求和）和avg（求均值）为例介绍如何使用
+
+使用sum方法可以对数据进行求和统计。以上述数据为例，如下写法对不同班级进行分数统计
+
+```js
+const res = await db.collection('score')
+.groupBy('grade,class')
+.groupField('sum(score) as totalScore')
+.get()
+```
+
+返回结果如下
+
+```js
+{
+  data: [{
+    grade: "1",
+    class: "A",
+    totalScore: 20
+  },{
+    grade: "1",
+    class: "B",
+    totalScore: 40
+  },{
+    grade: "2",
+    class: "A",
+    totalScore: 60
+  }]
+}
+```
+
+1年级A班、1年级B班、2年级A班，3个班级的总分分别是20、40、60。
+
+求均值方法与求和类似，将上面sum方法换成avg方法即可
+
+```js
+const res = await db.collection('score')
+.groupBy('grade,class')
+.groupField('avg(score) as avgScore')
+.get()
+```
+
+返回结果如下
+
+```js
+{
+  data: [{
+    grade: "1",
+    class: "A",
+    avgScore: 10
+  },{
+    grade: "1",
+    class: "B",
+    avgScore: 20
+  },{
+    grade: "2",
+    class: "A",
+    avgScore: 30
+  }]
+}
+```
+
+
+如果额外还在groupBy之前使用了field方法，此field用于决定将哪些数据传给groupBy和groupField使用
+
+例：如果上述数据中score是一个数组
+
+```js
+{
+  _id: "1",
+  grade: "1",
+  class: "A",
+  name: "zhao",
+  score: [1,1,1,1,1]
+}
+{
+  _id: "2",
+  grade: "1",
+  class: "A",
+  name: "qian",
+  score: [3,3,3,3,3]
+}
+{
+  _id: "3",
+  grade: "1",
+  class: "B",
+  name: "li",
+  score: [3,3,3,3,3]
+}
+{
+  _id: "4",
+  grade: "1",
+  class: "B",
+  name: "zhou",
+  score: [5,5,5,5,5]
+}
+{
+  _id: "5",
+  grade: "2",
+  class: "A",
+  name: "wu",
+  score: [5,5,5,5,5]
+}
+{
+  _id: "6",
+  grade: "2",
+  class: "A",
+  name: "zheng",
+  score: [7,7,7,7,7]
+}
+```
+
+如下field写法将上面的score数组求和之后传递给groupBy和groupField使用。在field内没出现的字段（比如name），在后面的方法里面不能使用
+
+```js
+const res = await db.collection('score')
+.field('grade,class,sum(score) as userTotalScore')
+.groupBy('grade,class')
+.groupField('avg(userTotalScore) as avgScore')
+.get()
+```
+
+返回结果如下
+
+```js
+{
+  data: [{
+    grade: "1",
+    class: "A",
+    avgScore: 10
+  },{
+    grade: "1",
+    class: "B",
+    avgScore: 20
+  },{
+    grade: "2",
+    class: "A",
+    avgScore: 30
+  }]
+}
+```
+
+
+#### 统计数量示例
+
+使用count方法可以对记录数量进行统计。以上述数据为例，如下写法对不同班级统计参赛人数
+
+```js
+const res = await db.collection('score')
+.groupBy('grade,class')
+.groupField('count(*) as totalStudents')
+.get()
+```
+
+返回结果如下
+
+```js
+{
+  data: [{
+    grade: "1",
+    class: "A",
+    totalStudents: 2
+  },{
+    grade: "1",
+    class: "B",
+    totalStudents: 2
+  },{
+    grade: "2",
+    class: "A",
+    totalStudents: 2
+  }]
+}
+```
+
+**注意**
+
+- `count(*)`为固定写法，括号里的*可以省略
+
+#### 按日分组统计示例
+
+按时间段统计是常见的需求，而时间段统计会用到日期运算符。
+
+假设要统计[uni-id-users](https://gitee.com/dcloud/opendb/blob/master/collection/uni-id-users/collection.json)表的每日新增注册用户数量。表内有以下数据：
+
+```json
+{
+  "_id": "1",
+  "username": "name1",
+  "register_date": 1611367810000 // 2021-01-23 10:10:10
+}
+{
+  "_id": "2",
+  "username": "name2",
+  "register_date": 1611367810000 // 2021-01-23 10:10:10
+}
+{
+  "_id": "3",
+  "username": "name3",
+  "register_date": 1611367810000 // 2021-01-23 10:10:10
+}
+{
+  "_id": "4",
+  "username": "name4",
+  "register_date": 1611281410000 // 2021-01-22 10:10:10
+}
+{
+  "_id": "5",
+  "username": "name5",
+  "register_date": 1611281410000 // 2021-01-22 10:10:10
+}
+{
+  "_id": "6",
+  "username": "name6",
+  "register_date": 1611195010000 // 2021-01-21 10:10:10
+}
+```
+
+由于`register_date`字段是时间戳格式，含有时分秒信息。但统计每日新增注册用户时是需要忽略时分秒的。
+
+1. 首先使用add操作符将`register_date`从时间戳转化为日期类型。
+
+add操作符的用法为`add(值1,值2)`。`add(new Date(0),register_date)`表示给字段register_date + 0，这个运算没有改变具体的时间，但把`register_date`的格式从时间戳转为了日期类型。
+
+2. 然后使用dateToString将add得到的日期格式化为形如`2021-01-21`的字符串，去掉时分秒。
+
+dateToString操作符的用法为`dateToString(日期对象,格式化字符串,时区)`。具体如下：`dateToString(add(new Date(0),register_date),"%Y-%m-%d","+0800")`
+
+3. 然后根据此字符串进行分组统计，得到每天注册用户量。代码如下：
+
+```js
+const res = await db.collection('uni-id-users')
+.groupBy('dateToString(add(new Date(0),register_date),"%Y-%m-%d","+0800") as date')
+.groupField('count(*) as newusercount')
+.get()
+```
+
+查询返回结果如下：
+```js
+res = {
+  result: {
+    data: [{
+      date: '2021-01-23',
+      newusercount: 3
+    },{
+      date: '2021-01-22',
+      newusercount: 2
+    },{
+      date: '2021-01-21',
+      newusercount: 1
+    }]
+  }
+}
+```
+
+完整数据库运算方法列表请参考：[clientDB内可使用的数据库运算方法](uniCloud/clientdb.md?id=aggregate-operator)
+
+#### count权限控制
+
+在使用普通的累积器操作符，如sum、avg时，权限控制与常规的权限控制并无不同。
+
+但使用count时，可以单独配置表级的count权限。
+
+请不要轻率的把[uni-id-users](https://gitee.com/dcloud/opendb/blob/master/collection/uni-id-users/collection.json)表的count权限设为true，即任何人都可以count。这意味着游客将可以获取到你的用户总数量。
+
+count权限的控制逻辑如下：
+
+- 在不使用field，仅使用groupBy和groupField的情况下，会以groupBy和groupField内访问的所有字段的权限来校验访问是否合法。
+- 在额外使用field方法的情况下，会计算field内访问的所有字段计算权限。上面的例子中会使用表的read权限和grade、class、score三个字段的权限，来进行权限校验。
+- 在HBuilderX 3.1.0之前，count操作都会使用表级的read权限进行验证。HBuilderX 3.1.0及之后的版本，如果配置了count权限则会使用表级的read+count权限进行校验，两条均满足才可以通过校验
+- 如果schema内没有count权限，则只会使用read权限进行校验
+- 所有会统计数量的操作均会触发count权限校验
+
+### 数据去重distinct@distinct
+
+通过.distinct()方法，对数据查询结果中重复的记录进行去重。
+
+distinct方法将按照field方法指定的字段进行去重（如果field内未指定`_id`，不会按照`_id`去重）
+
+> 本地调试支持：`HBuilderX 3.1.0`+；云端支持：2021-1-26日后更新一次云端 DB Schema生效
+
+```js
+const res = await db.collection('table1')
+.field('field1')
+.distinct() // 注意distinct方法没有参数
+.get()
+```
+
+例：如果数据库`score`表为某次比赛统计的分数数据，每条记录为一个学生的分数
+
+`score`表的数据：
+
+```js
+{
+  _id: "1",
+  grade: "1",
+  class: "A",
+  name: "zhao",
+  score: 5
+}
+{
+  _id: "2",
+  grade: "1",
+  class: "A",
+  name: "qian",
+  score: 15
+}
+{
+  _id: "3",
+  grade: "1",
+  class: "B",
+  name: "li",
+  score: 15
+}
+{
+  _id: "4",
+  grade: "1",
+  class: "B",
+  name: "zhou",
+  score: 25
+}
+{
+  _id: "5",
+  grade: "2",
+  class: "A",
+  name: "wu",
+  score: 25
+}
+{
+  _id: "6",
+  grade: "2",
+  class: "A",
+  name: "zheng",
+  score: 35
+}
+```
+
+以下代码可以按照grade、class两字段去重，获取所有参赛班级
+
+```js
+const res = await db.collection('score')
+.field('grade,class')
+.distinct() // 注意distinct方法没有参数
+.get()
+```
+
+查询返回结果如下
+
+```js
+{
+  data: [{
+    grade:"1",
+    class: "A"
+  },{
+    grade:"1",
+    class: "B"
+  },{
+    grade:"2",
+    class: "A"
+  }]
+}
+```
+
+**注意**
+
+- distinct指对返回结果中完全相同的记录进行去重，重复的记录只保留一条。因为`_id`字段是必然不同的，所以使用distinct时必须同时指定field，且field中不可存在`_id`字段
 
 ### 新增数据记录add
 
@@ -804,7 +1941,7 @@ db.collection("table1")
 
 ### 更新数据记录update
 
-获取到db的表对象，然后指定要删除的记录，通过remove方法删除。
+获取到db的表对象，然后指定要更新的记录，通过update方法更新。
 
 注意：如果是非admin账户修改数据，需要在数据库中待操作表的`db schema`中要配置permission权限，赋予update为true。
 
@@ -986,9 +2123,9 @@ const res = await db.collection('table1').where({
 - 更新数据库时不可使用更新操作符`db.command.inc`等
 - 更新数据时键值不可使用`{'a.b.c': 1}`的形式，需要写成`{a:{b:{c:1}}}`形式（后续会对此进行优化）
 
-### 其他数据库操作
+### MongoDB聚合操作
 
-clientDB支持使用聚合操作读取数据，关于聚合操作请参考[聚合操作](uniCloud/cf-database.md?id=aggregate)
+clientDB API支持使用聚合操作读取数据，关于聚合操作请参考[聚合操作](uniCloud/cf-database.md?id=aggregate)
 
 例：取status等于1的随机20条数据
 
@@ -1006,7 +2143,7 @@ const res = await db.collection('test').aggregate()
 
 **注意**
 
-- 目前`<uni-clientdb>`组件暂不支持使用聚合操作读取数据
+- 目前`<uni-clientdb>`组件暂不支持使用直接aggregate方法进行聚合操作，但是可以使用JQL进行联表查询、分组统计、数据去重等功能
 
 ### 刷新token@refreshtoken
 
@@ -1030,11 +2167,11 @@ db.on('refreshToken', refreshToken)
 db.off('refreshToken', refreshToken)
 ```
 
-**注意：HBuilderX 3.0.0之前请使用db.auth.on、db.auth.off**
+**注意：HBuilderX 3.0.0之前请使用db.auth.on、db.auth.off，HBuilderX 3.0.0以上版本仍兼容旧写法，但是推荐使用新写法db.on**
 
 ### 错误处理@error
 
-clientDB错误事件，HBuilderX 3.0.0起支持
+全局clientDB错误事件，HBuilderX 3.0.0起支持。
 
 **用法**
 
@@ -1042,7 +2179,7 @@ clientDB错误事件，HBuilderX 3.0.0起支持
 const db = uniCloud.database()
 
 function onDBError({
-  code,
+  code, // 错误码详见https://uniapp.dcloud.net.cn/uniCloud/clientdb?id=returnvalue
   message
 }) {
   // 处理错误
@@ -1145,6 +2282,7 @@ db.auth.off('error', onError)
     "create": false, // 禁止新增数据记录（不配置时等同于false）
     "update": false, // 禁止更新数据（不配置时等同于false）
     "delete": false, // 禁止删除数据（不配置时等同于false）
+	"count": false, // 禁止对本表进行count计数
   },
   "properties": { // 字段列表，注意这里是对象
     "secret_field": { // 字段名
@@ -1204,9 +2342,9 @@ db.collection('order')
   .get()
 ```
 
-在进行数据库操作之前，clientDB会使用permission内配置的规则对客户端操作进行一次预校验，如果预校验不通过还会通过数据库查询再进行一次校验
+在进行数据库操作之前，clientDB会使用permission内配置的规则对客户端操作进行一次校验，如果本次校验不通过还会通过数据库查询再进行一次校验
 
-例：
+例1：
 
 ```js
 // 数据库内news表有以下数据
@@ -1245,6 +2383,57 @@ db.collection('news').doc('1').update({
 
 此时客户端条件里面只有`doc._id == 1`，schema内又限制的`doc.user_id == auth.uid`，所以第一次预校验无法通过，会进行一次查库校验判断是否有权限进行操作。发现auth.uid确实和doc.user_id一致，上面的数据库操作允许执行。
 
+例2：
+
+```js
+// 数据库内goods表有以下数据
+{
+  _id: "1",
+  name: "n1",
+  status: 1
+}
+{
+  _id: "2",
+  name: "n2",
+  status: 2
+}
+{
+  _id: "3",
+  name: "n3",
+  status: 3
+}
+```
+
+```js
+// news表对应的schema内做如下配置
+{
+  "bsonType": "object",
+  "permission": { // 表级权限
+    "read": "doc.status > 1",
+  },
+  "properties": {
+    "name": {
+      "bsonType": "string"
+    },
+    "status": {
+      "bsonType": "int"
+    }
+  }
+}
+```
+
+```js
+// 用户在客户端使用如下操作，可以通过第一次校验，不会触发查库校验
+db.collection('goods').where('status > 1').get()
+
+// 用户在客户端使用如下操作，无法通过第一次校验，会触发一次查库校验（原理大致是使用name == "n3" && status <= 1作为条件进行一次查询，如果有结果就认为没有权限访问，了解即可，无需深入）
+db.collection('goods').where('name == "n3"').get()
+
+// 用户在客户端使用如下操作，无法通过第一次校验，会触发一次查库校验，查库校验也会无法通过
+db.collection('goods').where('name == "n1"').get()
+```
+
+
 ## action@action
 
 action的作用是在执行前端发起的数据库操作时，额外触发一段云函数逻辑。它是一个可选模块。action是运行于云函数内的，可以使用云函数内的所有接口。
@@ -1254,6 +2443,8 @@ action的作用是在执行前端发起的数据库操作时，额外触发一�
 **注意action方法是db对象的方法，只能跟在db后面，不能跟在collection()后面**
 - 正确：`db.action("someactionname").collection('table1')`
 - 错误：`db.collection('table1').action("someactionname")`
+
+**尽量不要在action中使用全局变量，如果一定要用请务必确保自己已经阅读并理解了[云函数的启动模式](uniCloud/cf-functions.md?id=launchtype)**
 
 如果使用`<uni-clientdb>组件`，该组件也有action属性，设置action="someactionname"即可。
 ```html
@@ -1277,9 +2468,10 @@ action是一种特殊的云函数，它不占用服务空间的云函数数量�
 - before在clientDB执行前触发，before里的代码执行完毕后再开始操作数据库。before的常用用途：
 	* 对前端传入的数据进行二次处理
 	* 在此处开启数据库事务，万一操作数据库失败，可以在after里回滚
+	* 使用throw阻止运行
 	* 如果权限或字段值域校验不想配在schema和validateFunction里，也可以在这里做校验
 	
-- after在clientDB执行后触发，clientDB操作数据库后触发before里的代码。after的常用用途：
+- after在clientDB执行后触发，clientDB操作数据库后触发after里的代码。after的常用用途：
 	* 对将要返回给前端的数据进行二次处理
 	* 也可以在此处处理错误，回滚数据库事务
 	* 对数据库进行二次操作，比如前端查询一篇文章详情后，在此处对文章的阅读数+1。因为permission里定义，一般是要禁止前端操作文章的阅读数字段的，此时就应该通过action，在云函数里对阅读数+1
@@ -1341,7 +2533,7 @@ module.exports = {
   command: {
     // getMethod('where') 获取所有的where方法，返回结果为[{$method:'where',$param: [{a:1}]}]
     getMethod,
-    // getMethod({name:'where',index: 0}) 获取第1个where方法的参数，结果为数组形式，例：[{a:1}]
+    // getParam({name:'where',index: 0}) 获取第1个where方法的参数，结果为数组形式，例：[{a:1}]
     getParam,
     // setParam({name:'where',index: 0, param: [{a:1}]}) 设置第1个where方法的参数，调用之后where方法实际形式为：where({a:1})
     setParam
@@ -1362,3 +2554,186 @@ module.exports = {
   type
 }
 ```
+
+**如需在before和after内传参，建议直接在state上挂载。但是切勿覆盖上述属性**
+
+## 数据库运算方法列表@aggregate-operator
+
+uniCloud的云数据库，提供了一批强大的运算方法。这些方法是数据库执行的，而不是云函数执行的。
+
+这些运算方法是与数据查询搭配使用的，它们可以对字段的值或字段的值的一部分进行运算，将运算后的结果返回给查询请求。
+
+数据库运算方法，提供了比传统SQL更大强大和灵活的查询。可以实现更多功能、可以一次性查询出期待的结果。不必多次查库多次运算，那样不仅代码复杂，而且会造成多次查库性能下降；如果使用计费云空间，使用这些方法还可以减少数据库查询次数。
+
+比如sum()方法，可以对多行记录的某个字段值求和、可以对单行记录的若干字段的值求和，如果字段是一个数组，还可以对数组的各项求和。
+
+为方便书写，clientDB内将数据库运算方法的用法进行了简化（相对于云函数内使用数据库运算方法而言），主要是参数摊平，以字符串方式表达。以下是可以在clientDB中使用的数据库运算方法
+
+|运算方法						|用途																																																															|JQL简化用法																																								|说明																			|
+|---							|---																																																															|---																																												|---																			|
+|abs							|返回一个数字的绝对值																																																							|abs(表达式)																																								|-																				|
+|add							|将数字相加或将数字加在日期上。如果参数中的其中一个值是日期，那么其他值将被视为毫秒数加在该日期上																	|add(表达式1,表达式2)																																				|-																				|
+|ceil							|向上取整																																																													|ceil(表达式)																																								|-																				|
+|divide						|传入被除数和除数，求商																																																						|divide(表达式1,表达式2)																																		|-																				|
+|exp							|取 e（自然对数的底数，欧拉数） 的 n 次方																																													|exp(表达式)																																								|-																				|
+|floor						|向下取整																																																													|floor(表达式)																																							|-																				|
+|ln								|计算给定数字在自然对数值																																																					|ln(表达式)																																									|-																				|
+|log							|计算给定数字在给定对数底下的 log 值																																															|log(表达式1,表达式2)																																				|-																				|
+|log10						|计算给定数字在对数底为 10 下的 log 值																																														|log10(表达式)																																							|-																				|
+|mod							|取模运算，第一个数字是被除数，第二个数字是除数																																										|mod(表达式1,表达式2)																																				|-																				|
+|multiply					|取传入的数字参数相乘的结果																																																				|multiply(表达式1,表达式2)																																	|-																				|
+|pow							|求给定基数的指数次幂																																																							|pow(表达式1,表达式2)																																				|-																				|
+|sqrt							|求平方根																																																													|sqrt(表达式1,表达式2)																																			|-																				|
+|subtract					|将两个数字相减然后返回差值，或将两个日期相减然后返回相差的毫秒数，或将一个日期减去一个数字返回结果的日期。												|subtract(表达式1,表达式2)																																	|-																				|
+|trunc						|将数字截断为整形																																																									|trunc(表达式)																																							|-																				|
+|arrayElemAt			|返回在指定数组下标的元素																																																					|arrayElemAt(表达式1,表达式2)																																|-																				|
+|arrayToObject		|将一个数组转换为对象																																																							|arrayToObject(表达式)																																			|-																				|
+|concatArrays			|将多个数组拼接成一个数组																																																					|concatArrays(表达式1,表达式2)																															|-																				|
+|filter						|根据给定条件返回满足条件的数组的子集																																															|filter(input,as,cond)																																			|-																				|
+|in								|给定一个值和一个数组，如果值在数组中则返回 true，否则返回 false																																	|in(表达式1,表达式2)																																				|-																				|
+|indexOfArray			|在数组中找出等于给定值的第一个元素的下标，如果找不到则返回 -1																																		|indexOfArray(表达式1,表达式2)																															|-																				|
+|isArray					|判断给定表达式是否是数组，返回布尔值																																															|isArray(表达式)																																						|-																				|
+|map							|类似 JavaScript Array 上的 map 方法，将给定数组的每个元素按给定转换方法转换后得出新的数组																				|map(input,as,in)																																						|-																				|
+|objectToArray		|将一个对象转换为数组。方法把对象的每个键值对都变成输出数组的一个元素，元素形如 `{ k: <key>, v: <value> }`												|objectToArray(表达式)																																			|-																				|
+|range						|返回一组生成的序列数字。给定开始值、结束值、非零的步长，range 会返回从开始值开始逐步增长、步长为给定步长、但不包括结束值的序列。	|range(表达式1,表达式2)																																			|-																				|
+|reduce						|类似 JavaScript 的 reduce 方法，应用一个表达式于数组各个元素然后归一成一个元素																										|reduce(input,initialValue,in)																															|-																				|
+|reverseArray			|返回给定数组的倒序形式																																																						|reverseArray(表达式)																																				|-																				|
+|size							|返回数组长度																																																											|size(表达式)																																								|-																				|
+|slice						|类似 JavaScritp 的 slice 方法。返回给定数组的指定子集																																						|slice(表达式1,表达式2)																																			|-																				|
+|zip							|把二维数组的第二维数组中的相同序号的元素分别拼装成一个新的数组进而组装成一个新的二维数组。																				|zip(inputs,useLongestLength,defaults)																											|-																				|
+|and							|给定多个表达式，and 仅在所有表达式都返回 true 时返回 true，否则返回 false																												|and(表达式1,表达式2)																																				|-																				|
+|not							|给定一个表达式，如果表达式返回 true，则 not 返回 false，否则返回 true。注意表达式不能为逻辑表达式（and、or、nor、not）						|not(表达式)																																								|-																				|
+|or								|给定多个表达式，如果任意一个表达式返回 true，则 or 返回 true，否则返回 false																											|or(表达式1,表达式2)																																				|-																				|
+|cmp							|给定两个值，返回其比较值。如果第一个值小于第二个值，返回 -1 如果第一个值大于第二个值，返回 1 如果两个值相等，返回 0							|cmp(表达式1,表达式2)																																				|-																				|
+|eq								|匹配两个值，如果相等则返回 true，否则返回 false																																									|eq(表达式1,表达式2)																																				|-																				|
+|gt								|匹配两个值，如果前者大于后者则返回 true，否则返回 false																																					|gt(表达式1,表达式2)																																				|-																				|
+|gte							|匹配两个值，如果前者大于或等于后者则返回 true，否则返回 false																																		|gte(表达式1,表达式2)																																				|-																				|
+|lt								|匹配两个值，如果前者小于后者则返回 true，否则返回 false																																					|lt(表达式1,表达式2)																																				|-																				|
+|lte							|匹配两个值，如果前者小于或等于后者则返回 true，否则返回 false																																		|lte(表达式1,表达式2)																																				|-																				|
+|neq							|匹配两个值，如果不相等则返回 true，否则返回 false																																								|neq(表达式1,表达式2)																																				|-																				|
+|cond							|计算布尔表达式，返回指定的两个值其中之一																																													|cond(表达式1,表达式2)																																			|-																				|
+|ifNull						|计算给定的表达式，如果表达式结果为 null、undefined 或者不存在，那么返回一个替代值；否则返回原值。																|ifNull(表达式1,表达式2)																																		|-																				|
+|switch						|根据给定的 switch-case-default 计算返回值																																												|switch(branches,default)																																		|-																				|
+|dateFromParts		|给定日期的相关信息，构建并返回一个日期对象																																												|dateFromParts(year,month,day,hour,minute,second,millisecond,timezone)											|-																				|
+|isoDateFromParts	|给定日期的相关信息，构建并返回一个日期对象																																												|isoDateFromParts(isoWeekYear,isoWeek,isoDayOfWeek,hour,minute,second,millisecond,timezone)	|-																				|
+|dateFromString		|将一个日期/时间字符串转换为日期对象																																															|dateFromString(dateString,format,timezone,onError,onNull)																	|-																				|
+|dateToString			|根据指定的表达式将日期对象格式化为符合要求的字符串																																								|dateToString(date,format,timezone,onNull)																									|-																				|
+|dayOfMonth				|返回日期字段对应的天数（一个月中的哪一天），是一个介于 1 至 31 之间的数字																												|dayOfMonth(date,timezone)																																	|-																				|
+|dayOfWeek				|返回日期字段对应的天数（一周中的第几天），是一个介于 1（周日）到 7（周六）之间的整数																							|dayOfWeek(date,timezone)																																		|-																				|
+|dayOfYear				|返回日期字段对应的天数（一年中的第几天），是一个介于 1 到 366 之间的整数																													|dayOfYear(date,timezone)																																		|-																				|
+|hour							|返回日期字段对应的小时数，是一个介于 0 到 23 之间的整数。																																				|hour(date,timezone)																																				|-																				|
+|isoDayOfWeek			|返回日期字段对应的 ISO 8601 标准的天数（一周中的第几天），是一个介于 1（周一）到 7（周日）之间的整数。														|isoDayOfWeek(date,timezone)																																|-																				|
+|isoWeek					|返回日期字段对应的 ISO 8601 标准的周数（一年中的第几周），是一个介于 1 到 53 之间的整数。																				|isoWeek(date,timezone)																																			|-																				|
+|isoWeekYear			|返回日期字段对应的 ISO 8601 标准的天数（一年中的第几天）																																					|isoWeekYear(date,timezone)																																	|-																				|
+|millisecond			|返回日期字段对应的毫秒数，是一个介于 0 到 999 之间的整数																																					|millisecond(date,timezone)																																	|-																				|
+|minute						|返回日期字段对应的分钟数，是一个介于 0 到 59 之间的整数																																					|minute(date,timezone)																																			|-																				|
+|month						|返回日期字段对应的月份，是一个介于 1 到 12 之间的整数																																						|month(date,timezone)																																				|-																				|
+|second						|返回日期字段对应的秒数，是一个介于 0 到 59 之间的整数，在特殊情况下（闰秒）可能等于 60																						|second(date,timezone)																																			|-																				|
+|week							|返回日期字段对应的周数（一年中的第几周），是一个介于 0 到 53 之间的整数																													|week(date,timezone)																																				|-																				|
+|year							|返回日期字段对应的年份																																																						|year(date,timezone)																																				|-																				|
+|timestampToDate	|传入一个时间戳，返回对应的日期对象																																																|timestampToDate(timestamp)																																	|仅JQL字符串内支持，HBuilderX 3.1.0起支持	|
+|literal					|直接返回一个值的字面量，不经过任何解析和处理																																											|literal(表达式)																																						|-																				|
+|mergeObjects			|将多个对象合并为单个对象																																																					|mergeObjects(表达式1,表达式2)																															|-																				|
+|allElementsTrue	|输入一个数组，或者数组字段的表达式。如果数组中所有元素均为真值，那么返回 true，否则返回 false。空数组永远返回 true								|allElementsTrue(表达式1,表达式2)																														|-																				|
+|anyElementTrue		|输入一个数组，或者数组字段的表达式。如果数组中任意一个元素为真值，那么返回 true，否则返回 false。空数组永远返回 false						|anyElementTrue(表达式1,表达式2)																														|-																				|
+|setDifference		|输入两个集合，输出只存在于第一个集合中的元素																																											|setDifference(表达式1,表达式2)																															|-																				|
+|setEquals				|输入两个集合，判断两个集合中包含的元素是否相同（不考虑顺序、去重）																																|setEquals(表达式1,表达式2)																																	|-																				|
+|setIntersection	|输入两个集合，输出两个集合的交集																																																	|setIntersection(表达式1,表达式2)																														|-																				|
+|setIsSubset			|输入两个集合，判断第一个集合是否是第二个集合的子集																																								|setIsSubset(表达式1,表达式2)																																|-																				|
+|setUnion					|输入两个集合，输出两个集合的并集																																																	|setUnion(表达式1,表达式2)																																	|-																				|
+|concat						|连接字符串，返回拼接后的字符串																																																		|concat(表达式1,表达式2)																																		|-																				|
+|indexOfBytes			|在目标字符串中查找子字符串，并返回第一次出现的 UTF-8 的字节索引（从0开始）。如果不存在子字符串，返回 -1													|indexOfBytes(表达式1,表达式2)																															|-																				|
+|indexOfCP				|在目标字符串中查找子字符串，并返回第一次出现的 UTF-8 的 code point 索引（从0开始）。如果不存在子字符串，返回 -1									|indexOfCP(表达式1,表达式2)																																	|-																				|
+|split						|按照分隔符分隔数组，并且删除分隔符，返回子字符串组成的数组。如果字符串无法找到分隔符进行分隔，返回原字符串作为数组的唯一元素			|split(表达式1,表达式2)																																			|-																				|
+|strLenBytes			|计算并返回指定字符串中 utf-8 编码的字节数量																																											|strLenBytes(表达式)																																				|-																				|
+|strLenCP					|计算并返回指定字符串的UTF-8 code points 数量																																											|strLenCP(表达式)																																						|-																				|
+|strcasecmp				|对两个字符串在不区分大小写的情况下进行大小比较，并返回比较的结果																																	|strcasecmp(表达式1,表达式2)																																|-																				|
+|substr						|返回字符串从指定位置开始的指定长度的子字符串																																											|substr(表达式1,表达式2)																																		|-																				|
+|substrBytes			|返回字符串从指定位置开始的指定长度的子字符串。子字符串是由字符串中指定的 UTF-8 字节索引的字符开始，长度为指定的字节数						|substrBytes(表达式1,表达式2)																																|-																				|
+|substrCP					|返回字符串从指定位置开始的指定长度的子字符串。子字符串是由字符串中指定的 UTF-8 字节索引的字符开始，长度为指定的字节数						|substrCP(表达式1,表达式2)																																	|-																				|
+|toLower					|将字符串转化为小写并返回																																																					|toLower(表达式)																																						|-																				|
+|toUpper					|将字符串转化为大写并返回																																																					|toUpper(表达式)																																						|-																				|
+|addToSet					|聚合运算符。向数组中添加值，如果数组中已存在该值，不执行任何操作。它只能在 group stage 中使用																		|addToSet(表达式)																																						|-																				|
+|avg							|返回指定表达式对应数据的平均值																																																		|avg(表达式)																																								|-																				|
+|first						|返回指定字段在一组集合的第一条记录对应的值。仅当这组集合是按照某种定义排序（ sort ）后，此操作才有意义														|first(表达式)																																							|-																				|
+|last							|返回指定字段在一组集合的最后一条记录对应的值。仅当这组集合是按照某种定义排序（ sort ）后，此操作才有意义。												|last(表达式)																																								|-																				|
+|max							|返回一组数值的最大值																																																							|max(表达式)																																								|-																				|
+|min							|返回一组数值的最小值																																																							|min(表达式)																																								|-																				|
+|push							|返回一组中表达式指定列与对应的值，一起组成的数组																																									|push(表达式)																																								|-																				|
+|stdDevPop				|返回一组字段对应值的标准差																																																				|stdDevPop(表达式)																																					|-																				|
+|stdDevSamp				|计算输入值的样本标准偏差																																																					|stdDevSamp(表达式)																																					|-																				|
+|sum							|在groupField内返回一组字段所有数值的总和，非groupField内返回一个数组所有元素的和																									|sum(表达式)																																								|-																				|
+|let							|自定义变量，并且在指定表达式中使用，返回的结果是表达式的结果																																			|let(vars,in)																																								|-																				|
+
+以上操作符还可以组合使用
+
+例：数据表article内有以下数据
+
+```js
+{
+  "_id": "1",
+  "publish_date": 1611141512751,
+  "content": "hello uniCloud content 01",
+  "content": "hello uniCloud title 01",
+}
+
+{
+  "_id": "2",
+  "publish_date": 1611141512752,
+  "content": "hello uniCloud content 02",
+  "content": "hello uniCloud title 02",
+}
+
+{
+  "_id": "3",
+  "publish_date": 1611141512753,
+  "content": "hello uniCloud content 03",
+  "content": "hello uniCloud title 03",
+}
+```
+
+可以通过以下查询将publish_date字段从时间戳转为`2021-01-20`形式，然后进行按天进行统计
+
+```js
+const res = await db.collection('article')
+.groupBy('dateToString(add(new Date(0),publish_date),"%Y-%m-%d","+0800") as publish_date_str')
+.groupField('count(*) as total')
+.get()
+```
+
+上述代码使用add方法将publish_date时间戳转为日期类型，再用dateToString将上一步的日期按照时区'+0800'（北京时间），格式化为`4位年-2位月-2位日`格式，完整格式化参数请参考[dateToString](uniCloud/cf-database.md?id=datetostring)。
+
+上述代码执行结果为
+
+```js
+res = {
+  result: {
+    data: [{
+      publish_date_str: '2021-01-20',
+      total: 3
+    }]
+  }
+}
+```
+
+### 分组运算方法@accumulator
+
+分组运算方法是专用于统计汇总的数据库运算方法。它也是数据库的方法，而不是js的方法。
+
+**等同于mongoDB累计器操作符概念**
+
+groupField内可使用且仅能使用如下运算方法。
+
+|操作符				|用途																																																				|用法									|说明																|
+|---					|---																																																				|---									|---																|
+|addToSet			|向数组中添加值，如果数组中已存在该值，不执行任何操作																												|addToSet(表达式)			|-																	|
+|avg					|返回指定表达式对应数据的平均值																																							|avg(表达式)					|-																	|
+|first				|返回指定字段在一组集合的第一条记录对应的值。仅当这组集合是按照某种定义排序（ sort ）后，此操作才有意义			|first(表达式)				|-																	|
+|last					|返回指定字段在一组集合的最后一条记录对应的值。仅当这组集合是按照某种定义排序（ sort ）后，此操作才有意义。	|last(表达式)					|-																	|
+|max					|返回一组数值的最大值																																												|max(表达式)					|-																	|
+|min					|返回一组数值的最小值																																												|min(表达式)					|-																	|
+|push					|返回一组中表达式指定列与对应的值，一起组成的数组																														|push(表达式)					|-																	|
+|stdDevPop		|返回一组字段对应值的标准差																																									|stdDevPop(表达式)		|-																	|
+|stdDevSamp		|计算输入值的样本标准偏差																																										|stdDevSamp(表达式)		|-																	|
+|sum					|返回一组字段所有数值的总和																																									|sum(表达式)					|-																	|
+|mergeObjects	|将一组对象合并为一个对象																																										|mergeObjects(表达式)	|在groupField内使用时仅接收一个参数	|

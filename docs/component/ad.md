@@ -192,6 +192,7 @@ export default {
           width: 300  // 根据宽度获取合适的广告(单位px)
         },
         (res) => {
+					// 注意: 广告数据只能使用一次
           this.adData = res.ads[0];
           console.log(this.adData);
         },
@@ -217,6 +218,78 @@ export default {
 </style>
 ```
 
+
+使用 ad/ad-draw 模拟插屏广告效果
+
+```html
+<template>
+  <view>
+    <!-- 使用 ad/ad-draw 模拟插屏广告效果 -->
+    <view>
+      <button @click="showInterstitialAd">显示插屏广告</button>
+    </view>
+    <view class="ad-interstitial" v-if="isShowInterstitialAd">
+      <view class="ad-view">
+        <ad class="ad" adpid="1111111111" @error="onerror"></ad>
+
+        <!-- ad-draw 仅在nvue页面生效 -->
+        <!-- <ad-draw class="ad-draw" adpid="1507000690"></ad-draw> -->
+      </view>
+      <view class="close-area">
+        <!-- 根据z自己页面风格设置关闭按钮的样式 -->
+        <button @click="hideInterstitialAd">X</button>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+  export default {
+    data() {
+      return {
+        isShowInterstitialAd: false
+      }
+    },
+    methods: {
+      showInterstitialAd() {
+        this.isShowInterstitialAd = true
+      },
+      hideInterstitialAd() {
+        this.isShowInterstitialAd = false
+      },
+      onerror(e) {
+        console.log(e);
+      }
+    }
+  }
+</script>
+
+<style>
+  .ad-interstitial {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    /* #ifndef APP-NVUE */
+    display: flex;
+    z-index: 1000;
+    /* #endif */
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .ad-draw {
+    width: 700rpx;
+    height: 400px;
+  }
+</style>
+
+```
+
+
 **激励视频广告**
 文档地址：[https://uniapp.dcloud.io/api/a-d/rewarded-video](https://uniapp.dcloud.io/api/a-d/rewarded-video)
 
@@ -225,4 +298,4 @@ export default {
 - App端广告开通指南和收益相关问题：[https://ask.dcloud.net.cn/article/36769](https://ask.dcloud.net.cn/article/36769)
 - App端除了ad组件，还支持开屏、激励视频等多种广告形式。详见[uni-AD官网](https://uniad.dcloud.net.cn/)
 - App端uni-AD聚合了腾讯广点通、头条穿山甲、360广告联盟等服务，打包时必须勾选相应的sdk，详见：[https://ask.dcloud.net.cn/article/36718](https://ask.dcloud.net.cn/article/36718)
-![](https://img-cdn-qiniu.dcloud.net.cn/uploads/article/20200115/10b714ce030ce2032a9d9b0bdd0ae03a.jpg)
+![](https://vkceyugu.cdn.bspapp.com/VKCEYUGU-uni-app-doc/f21eb570-4f32-11eb-b680-7980c8a877b8.jpg)
